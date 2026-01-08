@@ -13,7 +13,7 @@ nodes:
   # ============ Study Participants (MaaS) ============
 
   - id: myself
-    build: cargo build --release --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
+    build: cargo build --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
     path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
     inputs:
       text: bridge-to-myself/text
@@ -30,7 +30,7 @@ nodes:
       LOG_LEVEL: INFO
 
   - id: techer
-    build: cargo build --release --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
+    build: cargo build --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
     path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
     inputs:
       text: bridge-to-techer/text
@@ -157,7 +157,7 @@ nodes:
 
   # Bridge 1: Student2 + Tutor → Student1
   - id: bridge-to-myself
-    build: cargo build --release --manifest-path ../../../node-hub/dora-conference-bridge/Cargo.toml
+    build: cargo build --manifest-path ../../../node-hub/dora-conference-bridge/Cargo.toml
     path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
     env:
       LOG_LEVEL: INFO
@@ -178,7 +178,7 @@ nodes:
 
   # Bridge 2: Student1 + Tutor → Student2
   - id: bridge-to-techer
-    build: cargo build --release --manifest-path ../../../node-hub/dora-conference-bridge/Cargo.toml
+    build: cargo build --manifest-path ../../../node-hub/dora-conference-bridge/Cargo.toml
     path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
     env:
       LOG_LEVEL: INFO
@@ -200,7 +200,7 @@ nodes:
   # ============ Conference Controller (Brain) with Audio Backpressure ============
 
   - id: conference-controller
-    build: cargo build --release --manifest-path ../../../node-hub/dora-conference-controller/Cargo.toml
+    build: cargo build --manifest-path ../../../node-hub/dora-conference-controller/Cargo.toml
     path: ../../../node-hub/dora-conference-controller/target/release/dora-conference-controller
     env:
       DORA_POLICY_PATTERN: "[(techer, 1), (myself, 2)]"
