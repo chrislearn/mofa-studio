@@ -1206,6 +1206,15 @@ impl App {
                         .content_area
                         .main_content
                         .content
+                        .fm_page
+                ))
+                .apply_over(cx, live! { visible: false });
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
                         .app_page
                 ))
                 .apply_over(cx, live! { visible: false });
@@ -1249,6 +1258,15 @@ impl App {
                         .fm_page
                 ))
                 .apply_over(cx, live! { visible: true });
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .colang_page
+                ))
+                .apply_over(cx, live! { visible: false });
             self.ui
                 .view(ids!(
                     body.dashboard_base
