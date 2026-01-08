@@ -1,16 +1,20 @@
-# Voice Chat Test Dataflow - Using Fake Nodes for Testing
+# Voice Chat Dataflow - Modular MoFA Integration
 #
-# This dataflow uses fake/mock nodes instead of real AI APIs
-# to test the data flow and MoFA dynamic node integration
-# without requiring actual API keys or external services.
+# Based on examples/conference/dataflow-study-audio-multi.yml
+# Replaces debate-monitor, viewer, and audio-player with MoFA dynamic nodes
 #
-# Fake nodes generate predefined responses to simulate conversation
+# Key features:
+# - FIFO session queue in text segmenter
+# - 3 different voices (Zhao Daniu, Chen Yifan, Luo Xiang)
+# - Audio concatenation in arrival order
+# - Complete backpressure control
 
 nodes:
-  # ============ Fake LLM Participants ============
+  # ============ Study Participants (MaaS) ============
 
   - id: myself
-    path: fake_nodes/fake_llm.py
+    build: cargo build --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
+    path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
     inputs:
       text: bridge-to-myself/text
       control: conference-controller/llm_control
@@ -19,10 +23,13 @@ nodes:
       - status
       - log
     env:
-      PARTICIPANT_ID: myself
+      MAAS_CONFIG_PATH: study_config_myself.toml
+      DOUBAO_API_KEY: ${DOUBAO_API_KEY:-}
+      LOG_LEVEL: INFO
 
   - id: techer
-    path: fake_nodes/fake_llm.py
+    build: cargo build --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
+    path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
     inputs:
       text: bridge-to-techer/text
       control: conference-controller/llm_control
@@ -31,27 +38,39 @@ nodes:
       - status
       - log
     env:
-      PARTICIPANT_ID: techer
+      MAAS_CONFIG_PATH: study_config_techer.toml
+      DOUBAO_API_KEY: ${DOUBAO_API_KEY:-}
+      LOG_LEVEL: INFO
 
-  # ============ Fake Text Segmenter ============
+  # ============ Multi-Participant Audio Pipeline ============
 
+  # Multi-Input Text Segmenter with FIFO Session Queue
   - id: multi-text-segmenter
-    path: fake_nodes/fake_text_segmenter.py
+    build: pip install -e ../../../node-hub/dora-text-segmenter
+    path: dora-text-segmenter
     inputs:
+      # Participant inputs - output names are derived from these input port names
       myself:
         source: myself/text
         queue_size: 1000
       techer:
         source: techer/text
         queue_size: 1000
+
+      # Audio complete signal from audio player (replaces TTS segment_complete)
       audio_complete:
         source: mofa-audio-player/audio_complete
         queue_size: 100
+
+      # Audio buffer control for backpressure
       audio_buffer_control:
         source: mofa-audio-player/buffer_status
         queue_size: 10
+
+      # Control signals (reset and cancel)
       control: conference-controller/llm_control
       reset: conference-controller/control_judge
+
     outputs:
       - text_segment_myself
       - text_segment_techer
@@ -59,10 +78,20 @@ nodes:
       - metrics
       - log
 
-  # ============ Fake TTS Nodes ============
+    env:
+      SEGMENTER_MODE: conference
+      SEGMENT_MODE: sentence
+      MIN_SEGMENT_LENGTH: 5
+      MAX_SEGMENT_LENGTH: 15
+      PUNCTUATION_MARKS: "。！？.!?，,、；：\"\"''（）【】《》"
+      REMOVE_SPEAKER_ID: true
+      LOG_LEVEL: DEBUG
+      AUDIO_BUFFER_LOW_WATER_MARK: 30
+      AUDIO_BUFFER_HIGH_WATER_MARK: 60
 
   - id: primespeech-myself
-    path: fake_nodes/fake_tts.py
+    build: pip install -e ../../../libs/dora-common -e ../../../node-hub/dora-primespeech
+    path: dora-primespeech
     inputs:
       text: multi-text-segmenter/text_segment_myself
     outputs:
@@ -71,11 +100,28 @@ nodes:
       - segment_complete
       - log
     env:
+      TRANSFORMERS_OFFLINE: 1
+      HF_HUB_OFFLINE: 1
       VOICE_NAME: Zhao Daniu
-      PARTICIPANT_ID: myself
+      TEXT_LANG: zh
+      PROMPT_LANG: zh
+      TOP_K: 5
+      TOP_P: 1.0
+      TEMPERATURE: 1.0
+      SPEED_FACTOR: 1.0
+      FRAGMENT_INTERVAL: 0.1
+      USE_GPU: false
+      NUM_THREADS: 4
+      RETURN_FRAGMENT: false
+      LOG_LEVEL: DEBUG
+      ENABLE_INTERNAL_SEGMENTATION: true
+      TTS_MAX_SEGMENT_LENGTH: 100
+      TTS_MIN_SEGMENT_LENGTH: 20
 
+  # PrimeSpeech TTS for Student2 (Chen Yifan - Female, Emotional Voice)
   - id: primespeech-techer
-    path: fake_nodes/fake_tts.py
+    build: pip install -e ../../../libs/dora-common -e ../../../node-hub/dora-primespeech
+    path: dora-primespeech
     inputs:
       text: multi-text-segmenter/text_segment_techer
     outputs:
@@ -84,13 +130,34 @@ nodes:
       - segment_complete
       - log
     env:
+      TRANSFORMERS_OFFLINE: 1
+      HF_HUB_OFFLINE: 1
       VOICE_NAME: Chen Yifan
-      PARTICIPANT_ID: techer
+      TEXT_LANG: zh
+      PROMPT_LANG: zh
+      TOP_K: 5
+      TOP_P: 1.0
+      TEMPERATURE: 1.0
+      SPEED_FACTOR: 1.1
+      FRAGMENT_INTERVAL: 0.2
+      USE_GPU: false
+      NUM_THREADS: 4
+      RETURN_FRAGMENT: false
+      LOG_LEVEL: DEBUG
+      ENABLE_INTERNAL_SEGMENTATION: true
+      TTS_MAX_SEGMENT_LENGTH: 100
+      TTS_MIN_SEGMENT_LENGTH: 20
 
-  # ============ Fake Conference Bridges ============
+  # ============ 3 Conference Bridges (Switch) ============
 
   - id: bridge-to-myself
-    path: fake_nodes/fake_bridge.py
+    build: cargo build --manifest-path ../../../node-hub/dora-conference-bridge/Cargo.toml
+    path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
+    env:
+      LOG_LEVEL: INFO
+      STREAMING_PORTS: myself,techer
+      ERROR_MESSAGE_TEMPLATE: "[{participant} is experiencing technical difficulties. We will proceed without their response.]"
+      DORA_STUDY_MODE: true
     inputs:
       techer:
         source: techer/text
@@ -102,11 +169,15 @@ nodes:
       - text
       - status
       - log
-    env:
-      BRIDGE_TARGET: myself
 
   - id: bridge-to-techer
-    path: fake_nodes/fake_bridge.py
+    build: cargo build --manifest-path ../../../node-hub/dora-conference-bridge/Cargo.toml
+    path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
+    env:
+      LOG_LEVEL: INFO
+      STREAMING_PORTS: myself,techer
+      ERROR_MESSAGE_TEMPLATE: "[{participant} is experiencing technical difficulties. We will proceed without their response.]"
+      DORA_STUDY_MODE: true
     inputs:
       myself:
         source: myself/text
@@ -118,13 +189,17 @@ nodes:
       - text
       - status
       - log
-    env:
-      BRIDGE_TARGET: techer
 
-  # ============ Fake Conference Controller ============
+  # ============ Conference Controller (Brain) with Audio Backpressure ============
 
   - id: conference-controller
-    path: fake_nodes/fake_conference_controller.py
+    build: cargo build --manifest-path ../../../node-hub/dora-conference-controller/Cargo.toml
+    path: ../../../node-hub/dora-conference-controller/target/release/dora-conference-controller
+    env:
+      DORA_POLICY_PATTERN: "[(techer, 1), (myself, 2)]"
+      INITIAL_QUESTION_ID: 1
+      AUDIO_BUFFER_THRESHOLD: 30
+      AUDIO_BUFFER_RESUME_THRESHOLD: 10
     inputs:
       myself:
         source: myself/text
@@ -146,6 +221,7 @@ nodes:
 
   # ============ MoFA Dynamic Nodes (UI Widgets) ============
 
+  # Audio Player - receives synthesized audio and plays through speaker
   - id: mofa-audio-player
     path: dynamic
     inputs:
@@ -165,12 +241,17 @@ nodes:
       - audio_complete
       - log
 
+  # Note: mofa-participant-panel has been consolidated into mofa-audio-player
+  # AudioPlayerBridge now handles both audio playback AND LED level visualization
+
+  # Prompt Input - receives LLM text outputs for chat display, sends user control
   - id: mofa-prompt-input
     path: dynamic
     env:
       DORA_STUDY_MODE: true
       LOG_LEVEL: DEBUG
     inputs:
+      # LLM text outputs only (for chat display)
       llm1_text:
         source: myself/text
         queue_size: 1000
@@ -180,6 +261,7 @@ nodes:
     outputs:
       - control
 
+  # System Log - aggregates logs from all nodes
   - id: mofa-system-log
     path: dynamic
     inputs:
@@ -190,6 +272,8 @@ nodes:
       llm1_text:
         source: myself/text
         queue_size: 1000
+
+      # Student2 logs
       llm2_log:
         source: techer/log
         queue_size: 1000
@@ -197,6 +281,8 @@ nodes:
       llm2_text:
         source: techer/text
         queue_size: 1000
+
+      # Bridge logs
       bridge1_log:
         source: bridge-to-myself/log
         queue_size: 1000
@@ -211,6 +297,8 @@ nodes:
       bridge2_text:
         source: bridge-to-techer/text
         queue_size: 1000
+
+      # Controller logs
       controller_status: conference-controller/status
       controller_log:
         source: conference-controller/log
@@ -218,6 +306,8 @@ nodes:
       control_judge: conference-controller/control_judge
       control_llm2: conference-controller/control_llm2
       control_llm1: conference-controller/control_llm1
+
+      # Audio pipeline logs
       segmenter_log:
         source: multi-text-segmenter/log
         queue_size: 1000

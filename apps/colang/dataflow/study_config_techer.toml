@@ -1,7 +1,6 @@
-# MaaS Client Configuration for Study Session - Student2
-# Uses GPT-4o-mini model for learning discussion
+# 使用豆包/火山引擎 API 进行学习讨论 - 学生2（亦菲）
 
-default_model = "gpt-4.1"
+default_model = "doubao-pro-32k"
 system_prompt = """你是 亦菲，一个情商很高、很可爱的女生。你不擅长抽象理工推理，但很会提问题，也从不装懂。
 
 对话背景：
@@ -31,67 +30,27 @@ status_timeout_seconds = 60
 # Anchor context for learning discussion
 anchor_context = "study-context.md"
 
-# Alibaba Cloud Provider
+# 豆包/火山引擎 Provider (Doubao/Volcanic Engine)
 [[providers]]
-id = "alicloud"
-kind = "alicloud"
-api_url = "https://dashscope.aliyuncs.com/api/v1"
-api_key = "env:ALIBABA_CLOUD_API_KEY"
-proxy = false
-
-# Qwen Models
-[[models]]
-id = "qwen-max"
-route = { provider = "alicloud", model = "qwen-max" }
-
-[[models]]
-id = "qwen-plus"
-route = { provider = "alicloud", model = "qwen-plus" }
-
-[[models]]
-id = "qwen-turbo"
-route = { provider = "alicloud", model = "qwen-turbo" }
-
-# OpenAI Provider
-[[providers]]
-id = "openai"
+id = "doubao"
 kind = "openai"
-api_key = "env:OPENAI_API_KEY"
-api_url = "https://api.openai.com/v1"
+api_key = "env:DOUBAO_API_KEY"
+api_url = "https://ark.cn-beijing.volces.com/api/v3"
 proxy = false
 
-# DeepSeek Provider
-[[providers]]
-id = "deepseek"
-kind = "deepseek"
-api_key = "env:DEEPSEEK_API_KEY"
-proxy = false
+# 豆包 Models
+[[models]]
+id = "doubao-pro-32k"
+route = { provider = "doubao", model = "doubao-pro-32k" }
 
 [[models]]
-id = "gpt-4o"
-route = { provider = "openai", model = "gpt-4o" }
+id = "doubao-pro-128k"
+route = { provider = "doubao", model = "doubao-pro-128k" }
 
 [[models]]
-id = "gpt-4o-mini"
-route = { provider = "openai", model = "gpt-4o-mini" }
+id = "doubao-lite-32k"
+route = { provider = "doubao", model = "doubao-lite-32k" }
 
 [[models]]
-id = "gpt-4.1"
-route = { provider = "openai", model = "gpt-4.1" }
-
-[[models]]
-id = "gpt-4.1-mini"
-route = { provider = "openai", model = "gpt-4.1-mini" }
-
-[[models]]
-id = "gpt-5"
-route = { provider = "openai", model = "gpt-5" }
-
-# DeepSeek Models
-[[models]]
-id = "deepseek-chat"
-route = { provider = "deepseek", model = "deepseek-chat" }
-
-[[models]]
-id = "deepseek-reasoner"
-route = { provider = "deepseek", model = "deepseek-reasoner" }
+id = "doubao-lite-128k"
+route = { provider = "doubao", model = "doubao-lite-128k" }
