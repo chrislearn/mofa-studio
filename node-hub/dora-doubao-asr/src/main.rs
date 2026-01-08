@@ -1,0 +1,221 @@
+// Dora Node: Doubao ASR (Automatic Speech Recognition)
+// Converts user audio to text using Doubao Volcanic Engine API
+
+use dora_node_api::{DoraNode, Event};
+use eyre::{Context, Result};
+use reqwest::{Client, header};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use sqlx::sqlite::SqlitePool;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct AudioInput {
+    audio_data: Vec<u8>,
+    sample_rate: u32,
+    format: String,
+    session_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct AsrOutput {
+    text: String,
+    confidence: f32,
+    words: Vec<WordTiming>,
+    session_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct WordTiming {
+    word: String,
+    start_time: f64,
+    end_time: f64,
+    confidence: f32,
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    env_logger::init();
+    
+    let app_id = std::env::var("DOUBAO_APP_ID")
+        .wrap_err("DOUBAO_APP_ID environment variable not set")?;
+    
+    let access_token = std::env::var("DOUBAO_ACCESS_TOKEN")
+        .wrap_err("DOUBAO_ACCESS_TOKEN environment variable not set")?;
+    
+    let language = std::env::var("LANGUAGE").unwrap_or_else(|_| "en".to_string());
+    
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "sqlite://learning_companion.db".to_string());
+    
+    let pool = SqlitePool::connect(&database_url).await?;
+
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()?;
+
+    let (mut node, mut events) = DoraNode::init_from_env()?;
+    
+    log::info!("Doubao ASR node started (language: {})", language);
+
+    while let Some(event) = events.recv() {
+        match event {
+            Event::Input { id, data, .. } => {
+                match id.as_str() {
+                    "audio" => {
+                        log::debug!("Received audio input ({} bytes)", data.len());
+                        
+                        match serde_json::from_slice::<AudioInput>(&data) {
+                            Ok(input) => {
+                                match perform_asr(
+                                    &client,
+                                    &app_id,
+                                    &access_token,
+                                    &language,
+                                    &input
+                                ).await {
+                                    Ok(asr_result) => {
+                                        log::info!("ASR result: {}", asr_result.text);
+                                        
+                                        // Save conversation to database
+                                        if let Some(ref session_id) = input.session_id {
+                                            if let Err(e) = save_conversation(
+                                                &pool,
+                                                session_id,
+                                                &asr_result.text
+                                            ).await {
+                                                log::error!("Failed to save conversation: {}", e);
+                                            }
+                                        }
+                                        
+                                        let output_json = serde_json::to_vec(&asr_result)?;
+                                        node.send_output("text", Default::default(), output_json)?;
+                                    }
+                                    Err(e) => {
+                                        log::error!("ASR failed: {}", e);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                log::error!("Failed to parse audio input: {}", e);
+                            }
+                        }
+                    }
+                    _ => {
+                        log::warn!("Received unknown input: {}", id);
+                    }
+                }
+            }
+            Event::InputClosed { id } => {
+                log::info!("Input {} closed", id);
+            }
+            Event::Stop => {
+                log::info!("Received stop signal");
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    Ok(())
+}
+
+async fn perform_asr(
+    client: &Client,
+    app_id: &str,
+    access_token: &str,
+    language: &str,
+    input: &AudioInput,
+) -> Result<AsrOutput> {
+    let url = "https://openspeech.bytedance.com/api/v1/asr";
+    
+    let audio_base64 = base64::encode(&input.audio_data);
+    
+    let payload = json!({
+        "app": {
+            "appid": app_id,
+            "token": access_token
+        },
+        "user": {
+            "uid": "user_001"
+        },
+        "audio": {
+            "format": input.format,
+            "rate": input.sample_rate,
+            "language": language,
+            "data": audio_base64
+        }
+    });
+
+    let response = client
+        .post(url)
+        .header(header::CONTENT_TYPE, "application/json")
+        .json(&payload)
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        let error_text = response.text().await?;
+        eyre::bail!("ASR API error: {}", error_text);
+    }
+
+    let result: serde_json::Value = response.json().await?;
+    
+    let text = result["result"]["text"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+    
+    let confidence = result["result"]["confidence"]
+        .as_f64()
+        .unwrap_or(0.0) as f32;
+
+    let words = result["result"]["words"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|w| {
+                    Some(WordTiming {
+                        word: w["word"].as_str()?.to_string(),
+                        start_time: w["start_time"].as_f64()?,
+                        end_time: w["end_time"].as_f64()?,
+                        confidence: w["confidence"].as_f64()? as f32,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    Ok(AsrOutput {
+        text,
+        confidence,
+        words,
+        session_id: input.session_id.clone(),
+    })
+}
+
+async fn save_conversation(
+    pool: &SqlitePool,
+    session_id: &str,
+    text: &str,
+) -> Result<()> {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)?
+        .as_secs() as i64;
+
+    sqlx::query(
+        r#"
+        INSERT INTO conversations (
+            session_id, speaker, content_text, created_at
+        ) VALUES (?, ?, ?, ?)
+        "#
+    )
+    .bind(session_id)
+    .bind("user")
+    .bind(text)
+    .bind(now)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
