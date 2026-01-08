@@ -46,23 +46,6 @@ nodes:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       LOG_LEVEL: INFO
 
-  - id: tutor
-    build: cargo build --release --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
-    path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
-    inputs:
-      text: bridge-to-tutor/text
-      control: conference-controller/judge_prompt
-    outputs:
-      - text
-      - status
-      - log
-    env:
-      MAAS_CONFIG_PATH: study_config_tutor.toml
-      ALIBABA_CLOUD_API_KEY: ${ALIBABA_CLOUD_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-      LOG_LEVEL: INFO
-
   # ============ Multi-Participant Audio Pipeline ============
 
   # Multi-Input Text Segmenter with FIFO Session Queue
@@ -76,9 +59,6 @@ nodes:
         queue_size: 1000
       techer:
         source: techer/text
-        queue_size: 1000
-      tutor:
-        source: tutor/text
         queue_size: 1000
 
       # Audio complete signal from audio player (replaces TTS segment_complete)
@@ -98,7 +78,6 @@ nodes:
     outputs:
       - text_segment_myself
       - text_segment_techer
-      - text_segment_tutor
       - status
       - metrics
       - log
@@ -129,7 +108,6 @@ nodes:
       TRANSFORMERS_OFFLINE: 1
       HF_HUB_OFFLINE: 1
       VOICE_NAME: Zhao Daniu
-      PRIMESPEECH_MODEL_DIR: $HOME/.dora/models/primespeech
       TEXT_LANG: zh
       PROMPT_LANG: zh
       TOP_K: 5
@@ -160,7 +138,6 @@ nodes:
       TRANSFORMERS_OFFLINE: 1
       HF_HUB_OFFLINE: 1
       VOICE_NAME: Chen Yifan
-      PRIMESPEECH_MODEL_DIR: $HOME/.dora/models/primespeech
       TEXT_LANG: zh
       PROMPT_LANG: zh
       TOP_K: 5
@@ -168,37 +145,6 @@ nodes:
       TEMPERATURE: 1.0
       SPEED_FACTOR: 1.1
       FRAGMENT_INTERVAL: 0.2
-      USE_GPU: false
-      NUM_THREADS: 4
-      RETURN_FRAGMENT: false
-      LOG_LEVEL: DEBUG
-      ENABLE_INTERNAL_SEGMENTATION: true
-      TTS_MAX_SEGMENT_LENGTH: 100
-      TTS_MIN_SEGMENT_LENGTH: 20
-
-  # PrimeSpeech TTS for Tutor (Luo Xiang - Male, Authoritative Voice)
-  - id: primespeech-tutor
-    build: pip install -e ../../../libs/dora-common -e ../../../node-hub/dora-primespeech
-    path: dora-primespeech
-    inputs:
-      text: multi-text-segmenter/text_segment_tutor
-    outputs:
-      - audio
-      - status
-      - segment_complete
-      - log
-    env:
-      TRANSFORMERS_OFFLINE: 1
-      HF_HUB_OFFLINE: 1
-      VOICE_NAME: Luo Xiang
-      PRIMESPEECH_MODEL_DIR: $HOME/.dora/models/primespeech
-      TEXT_LANG: zh
-      PROMPT_LANG: zh
-      TOP_K: 5
-      TOP_P: 1.0
-      TEMPERATURE: 1.0
-      SPEED_FACTOR: 1.1
-      FRAGMENT_INTERVAL: 0.1
       USE_GPU: false
       NUM_THREADS: 4
       RETURN_FRAGMENT: false
@@ -215,15 +161,12 @@ nodes:
     path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
     env:
       LOG_LEVEL: INFO
-      STREAMING_PORTS: myself,tutor,techer
+      STREAMING_PORTS: myself,techer
       ERROR_MESSAGE_TEMPLATE: "[{participant} is experiencing technical difficulties. We will proceed without their response.]"
       DORA_STUDY_MODE: true
     inputs:
       techer:
         source: techer/text
-        queue_size: 1000
-      tutor:
-        source: tutor/text
         queue_size: 1000
       control:
         source: conference-controller/control_llm1
@@ -239,42 +182,15 @@ nodes:
     path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
     env:
       LOG_LEVEL: INFO
-      STREAMING_PORTS: myself,tutor,techer
+      STREAMING_PORTS: myself,techer
       ERROR_MESSAGE_TEMPLATE: "[{participant} is experiencing technical difficulties. We will proceed without their response.]"
       DORA_STUDY_MODE: true
     inputs:
       myself:
         source: myself/text
-        queue_size: 1000
-      tutor:
-        source: tutor/text
         queue_size: 1000
       control:
         source: conference-controller/control_llm2
-        queue_size: 10
-    outputs:
-      - text
-      - status
-      - log
-
-  # Bridge 3: Student1 + Student2 → Tutor
-  - id: bridge-to-tutor
-    build: cargo build --release --manifest-path ../../../node-hub/dora-conference-bridge/Cargo.toml
-    path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
-    env:
-      LOG_LEVEL: INFO
-      STREAMING_PORTS: myself,tutor,techer
-      ERROR_MESSAGE_TEMPLATE: "[{participant} is experiencing technical difficulties. We will proceed without their response.]"
-      DORA_STUDY_MODE: true
-    inputs:
-      myself:
-        source: myself/text
-        queue_size: 1000
-      techer:
-        source: techer/text
-        queue_size: 1000
-      control:
-        source: conference-controller/control_judge
         queue_size: 10
     outputs:
       - text
@@ -287,7 +203,7 @@ nodes:
     build: cargo build --release --manifest-path ../../../node-hub/dora-conference-controller/Cargo.toml
     path: ../../../node-hub/dora-conference-controller/target/release/dora-conference-controller
     env:
-      DORA_POLICY_PATTERN: "[(tutor, *), (techer, 1), (myself, 2)]"
+      DORA_POLICY_PATTERN: "[(techer, 1), (myself, 2)]"
       INITIAL_QUESTION_ID: 1
       AUDIO_BUFFER_THRESHOLD: 30
       AUDIO_BUFFER_RESUME_THRESHOLD: 10
@@ -297,9 +213,6 @@ nodes:
         queue_size: 1000
       techer:
         source: techer/text
-        queue_size: 1000
-      tutor:
-        source: tutor/text
         queue_size: 1000
       control: mofa-prompt-input/control
       session_start: mofa-audio-player/session_start
@@ -324,9 +237,6 @@ nodes:
         queue_size: 1000
       audio_techer:
         source: primespeech-techer/audio
-        queue_size: 1000
-      audio_tutor:
-        source: primespeech-tutor/audio
         queue_size: 1000
       control:
         source: conference-controller/llm_control
@@ -355,9 +265,6 @@ nodes:
       llm2_text:
         source: techer/text
         queue_size: 1000
-      judge_text:
-        source: tutor/text
-        queue_size: 1000
     outputs:
       - control
 
@@ -383,15 +290,6 @@ nodes:
         source: techer/text
         queue_size: 1000
 
-      # Tutor logs
-      judge_log:
-        source: tutor/log
-        queue_size: 1000
-      judge_status: tutor/status
-      judge_text:
-        source: tutor/text
-        queue_size: 1000
-
       # Bridge logs
       bridge1_log:
         source: bridge-to-myself/log
@@ -406,13 +304,6 @@ nodes:
       bridge2_status: bridge-to-techer/status
       bridge2_text:
         source: bridge-to-techer/text
-        queue_size: 1000
-      bridge3_log:
-        source: bridge-to-tutor/log
-        queue_size: 1000
-      bridge3_status: bridge-to-tutor/status
-      bridge3_text:
-        source: bridge-to-tutor/text
         queue_size: 1000
 
       # Controller logs
@@ -437,10 +328,6 @@ nodes:
         source: primespeech-techer/log
         queue_size: 1000
       tts2_status: primespeech-techer/status
-      tts3_log:
-        source: primespeech-tutor/log
-        queue_size: 1000
-      tts3_status: primespeech-tutor/status
       audio_status: mofa-audio-player/status
       audio_player_log:
         source: mofa-audio-player/log
