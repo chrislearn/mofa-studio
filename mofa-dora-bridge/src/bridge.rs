@@ -3,8 +3,8 @@
 use crate::data::{DoraData, EventMetadata};
 use crate::error::BridgeResult;
 use crossbeam_channel::{Receiver, Sender};
-use std::sync::Arc;
 use parking_lot::RwLock;
+use std::sync::Arc;
 
 /// Bridge connection state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

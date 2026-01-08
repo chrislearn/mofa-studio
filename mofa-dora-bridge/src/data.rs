@@ -242,7 +242,11 @@ impl ControlCommand {
     }
 
     /// Add parameter
-    pub fn with_param(mut self, key: impl Into<String>, value: impl Into<serde_json::Value>) -> Self {
+    pub fn with_param(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<serde_json::Value>,
+    ) -> Self {
         self.params.insert(key.into(), value.into());
         self
     }

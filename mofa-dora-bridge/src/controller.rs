@@ -7,12 +7,12 @@
 
 use crate::error::{BridgeError, BridgeResult};
 use crate::parser::{DataflowParser, ParsedDataflow};
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use parking_lot::RwLock;
 use tracing::{debug, error, info, warn};
 
 /// Dataflow state
@@ -66,7 +66,13 @@ pub struct DataflowController {
 impl DataflowController {
     /// Create a new controller for a dataflow
     pub fn new(dataflow_path: impl AsRef<Path>) -> BridgeResult<Self> {
-        let path = dataflow_path.as_ref().to_path_buf();
+        let original_path = dataflow_path.as_ref();
+        // Canonicalize to avoid surprises when callers pass relative paths coming
+        // from different working directories. If canonicalize fails (e.g. missing
+        // file), fall back to the provided path so the parser can surface the error.
+        let path = original_path
+            .canonicalize()
+            .unwrap_or_else(|_| original_path.to_path_buf());
 
         // Parse the dataflow
         let parsed = DataflowParser::parse(&path)?;
@@ -137,7 +143,9 @@ impl DataflowController {
                     .stdout(Stdio::null())
                     .stderr(Stdio::null())
                     .spawn()
-                    .map_err(|e| BridgeError::StartFailed(format!("Failed to start daemon: {}", e)))?;
+                    .map_err(|e| {
+                        BridgeError::StartFailed(format!("Failed to start daemon: {}", e))
+                    })?;
 
                 self.daemon_process = Some(child);
 
@@ -168,19 +176,23 @@ impl DataflowController {
         let missing = self.check_env_requirements();
         if !missing.is_empty() {
             let msg = format!("Missing required env vars: {}", missing.join(", "));
-            *self.state.write() = DataflowState::Error { message: msg.clone() };
+            *self.state.write() = DataflowState::Error {
+                message: msg.clone(),
+            };
             return Err(BridgeError::StartFailed(msg));
         }
 
         // Build command - run from dataflow's directory with just the filename
-        let dataflow_dir = self.dataflow_path.parent()
+        let dataflow_dir = self
+            .dataflow_path
+            .parent()
             .ok_or_else(|| BridgeError::StartFailed("Invalid dataflow path".to_string()))?;
-        let dataflow_filename = self.dataflow_path.file_name()
-            .ok_or_else(|| BridgeError::StartFailed("Invalid dataflow filename".to_string()))?;
 
         let mut cmd = Command::new("dora");
         cmd.arg("start")
-            .arg(dataflow_filename)
+            // Use the absolute path so dora always resolves node paths relative to
+            // the actual dataflow file location.
+            .arg(&self.dataflow_path)
             .arg("--detach")
             .current_dir(dataflow_dir);
 
@@ -191,15 +203,17 @@ impl DataflowController {
 
         // Execute
         info!("Starting dataflow: {:?}", self.dataflow_path);
-        let output = cmd
-            .output()
-            .map_err(|e| BridgeError::StartFailed(format!("Failed to execute dora start: {}", e)))?;
+        let output = cmd.output().map_err(|e| {
+            BridgeError::StartFailed(format!("Failed to execute dora start: {}", e))
+        })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let msg = format!("Dora start failed: {}", stderr);
             error!("{}", msg);
-            *self.state.write() = DataflowState::Error { message: msg.clone() };
+            *self.state.write() = DataflowState::Error {
+                message: msg.clone(),
+            };
             return Err(BridgeError::StartFailed(msg));
         }
 
@@ -269,7 +283,8 @@ impl DataflowController {
 
         // Add grace duration if specified
         if let Some(duration) = grace_duration {
-            cmd.arg("--grace-duration").arg(format!("{}s", duration.as_secs()));
+            cmd.arg("--grace-duration")
+                .arg(format!("{}s", duration.as_secs()));
         }
 
         // Execute dora stop
@@ -294,7 +309,10 @@ impl DataflowController {
         let state = self.state.read().clone();
 
         match state {
-            DataflowState::Running { ref dataflow_id, ref started_at } => {
+            DataflowState::Running {
+                ref dataflow_id,
+                ref started_at,
+            } => {
                 // Query dora for node status
                 let output = Command::new("dora")
                     .arg("list")
@@ -309,21 +327,29 @@ impl DataflowController {
                     state: if is_running {
                         DataflowState::Running {
                             dataflow_id: dataflow_id.clone(),
-                            started_at: *started_at
+                            started_at: *started_at,
                         }
                     } else {
                         DataflowState::Stopped
                     },
                     uptime: Some(uptime),
                     node_count: self.parsed.as_ref().map(|p| p.nodes.len()).unwrap_or(0),
-                    mofa_node_count: self.parsed.as_ref().map(|p| p.mofa_nodes.len()).unwrap_or(0),
+                    mofa_node_count: self
+                        .parsed
+                        .as_ref()
+                        .map(|p| p.mofa_nodes.len())
+                        .unwrap_or(0),
                 })
             }
             other => Ok(DataflowStatus {
                 state: other,
                 uptime: None,
                 node_count: self.parsed.as_ref().map(|p| p.nodes.len()).unwrap_or(0),
-                mofa_node_count: self.parsed.as_ref().map(|p| p.mofa_nodes.len()).unwrap_or(0),
+                mofa_node_count: self
+                    .parsed
+                    .as_ref()
+                    .map(|p| p.mofa_nodes.len())
+                    .unwrap_or(0),
             }),
         }
     }
@@ -332,9 +358,10 @@ impl DataflowController {
     fn parse_dataflow_id(output: &str) -> Option<String> {
         // Look for UUID pattern in output
         for line in output.lines() {
-            if let Some(id) = line.split_whitespace().find(|s| {
-                s.len() == 36 && s.chars().filter(|c| *c == '-').count() == 4
-            }) {
+            if let Some(id) = line
+                .split_whitespace()
+                .find(|s| s.len() == 36 && s.chars().filter(|c| *c == '-').count() == 4)
+            {
                 return Some(id.to_string());
             }
         }

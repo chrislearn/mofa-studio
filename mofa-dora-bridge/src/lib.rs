@@ -23,22 +23,22 @@
 //! 4. Route data between widgets and dora
 
 pub mod bridge;
-pub mod data;
-pub mod parser;
 pub mod controller;
+pub mod data;
 pub mod dispatcher;
 pub mod error;
+pub mod parser;
 
 // Widget-specific bridges
 pub mod widgets;
 
 // Re-exports
-pub use bridge::{DoraBridge, BridgeState, BridgeEvent};
-pub use data::{DoraData, AudioData, LogEntry, ChatMessage, ControlCommand};
-pub use parser::{DataflowParser, ParsedDataflow, ParsedNode, EnvRequirement, LogSource};
+pub use bridge::{BridgeEvent, BridgeState, DoraBridge};
 pub use controller::{DataflowController, DataflowState};
+pub use data::{AudioData, ChatMessage, ControlCommand, DoraData, LogEntry};
 pub use dispatcher::{DynamicNodeDispatcher, WidgetBinding};
 pub use error::{BridgeError, BridgeResult};
+pub use parser::{DataflowParser, EnvRequirement, LogSource, ParsedDataflow, ParsedNode};
 
 /// Prefix for MoFA built-in dynamic nodes in dataflow YAML
 pub const MOFA_NODE_PREFIX: &str = "mofa-";

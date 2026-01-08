@@ -10,7 +10,7 @@ use crate::data::{current_timestamp, DoraData, EventMetadata, LogEntry, LogLevel
 use crate::error::{BridgeError, BridgeResult};
 use arrow::array::Array;
 use crossbeam_channel::{bounded, Receiver, Sender};
-use dora_node_api::{DoraNode, Event, dora_core::config::NodeId, Parameter};
+use dora_node_api::{dora_core::config::NodeId, DoraNode, Event, Parameter};
 use parking_lot::RwLock;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -244,7 +244,10 @@ impl SystemLogBridge {
     fn extract_string(data: &dora_node_api::ArrowData) -> Option<String> {
         match data.0.data_type() {
             arrow::datatypes::DataType::Utf8 => {
-                let array = data.0.as_any().downcast_ref::<arrow::array::StringArray>()?;
+                let array = data
+                    .0
+                    .as_any()
+                    .downcast_ref::<arrow::array::StringArray>()?;
                 if array.len() > 0 {
                     return Some(array.value(0).to_string());
                 }

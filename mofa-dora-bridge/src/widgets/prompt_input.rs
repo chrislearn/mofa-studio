@@ -10,7 +10,10 @@ use crate::data::{ChatMessage, ControlCommand, DoraData, EventMetadata, MessageR
 use crate::error::{BridgeError, BridgeResult};
 use arrow::array::Array;
 use crossbeam_channel::{bounded, Receiver, Sender};
-use dora_node_api::{DoraNode, Event, IntoArrow, dora_core::config::{NodeId, DataId}, Parameter};
+use dora_node_api::{
+    dora_core::config::{DataId, NodeId},
+    DoraNode, Event, IntoArrow, Parameter,
+};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -48,10 +51,10 @@ pub struct PromptInputBridge {
 impl PromptInputBridge {
     /// Create a new prompt input bridge
     pub fn new(node_id: &str) -> Self {
-        let (event_tx, event_rx) = bounded(1000);  // Increased from 100 to prevent blocking
+        let (event_tx, event_rx) = bounded(1000); // Increased from 100 to prevent blocking
         let (prompt_tx, prompt_rx) = bounded(10);
         let (control_tx, control_rx) = bounded(10);
-        let (chat_tx, chat_rx) = bounded(1000);  // Increased from 100 to prevent blocking
+        let (chat_tx, chat_rx) = bounded(1000); // Increased from 100 to prevent blocking
 
         Self {
             node_id: node_id.to_string(),
@@ -101,15 +104,16 @@ impl PromptInputBridge {
         info!("Starting prompt input bridge event loop for {}", node_id);
 
         // Initialize dora node
-        let (mut node, mut events) = match DoraNode::init_from_node_id(NodeId::from(node_id.clone())) {
-            Ok(n) => n,
-            Err(e) => {
-                error!("Failed to init dora node {}: {}", node_id, e);
-                *state.write() = BridgeState::Error;
-                let _ = event_sender.send(BridgeEvent::Error(format!("Init failed: {}", e)));
-                return;
-            }
-        };
+        let (mut node, mut events) =
+            match DoraNode::init_from_node_id(NodeId::from(node_id.clone())) {
+                Ok(n) => n,
+                Err(e) => {
+                    error!("Failed to init dora node {}: {}", node_id, e);
+                    *state.write() = BridgeState::Error;
+                    let _ = event_sender.send(BridgeEvent::Error(format!("Init failed: {}", e)));
+                    return;
+                }
+            };
 
         *state.write() = BridgeState::Connected;
         let _ = event_sender.send(BridgeEvent::Connected);
@@ -190,17 +194,21 @@ impl PromptInputBridge {
                 if input_id.contains("text") || input_id.contains("response") {
                     if let Some(text) = Self::extract_string(&data) {
                         let sender = Self::extract_sender(input_id);
-                        let session_id = event_meta.get("question_id")
+                        let session_id = event_meta
+                            .get("question_id")
                             .map(|s| s.to_string())
                             .unwrap_or_else(|| "unknown".to_string());
-                        let session_status = event_meta.get("session_status")
+                        let session_status = event_meta
+                            .get("session_status")
                             .map(|s| s.to_string())
                             .unwrap_or_else(|| "unknown".to_string());
 
                         let key = (sender.clone(), session_id.clone());
 
                         // Accumulate streaming text
-                        let accumulated = streaming_text.entry(key.clone()).or_insert_with(String::new);
+                        let accumulated = streaming_text
+                            .entry(key.clone())
+                            .or_insert_with(String::new);
                         accumulated.push_str(&text);
 
                         // LLM sends "ended" (not "complete") when streaming finishes
@@ -259,7 +267,10 @@ impl PromptInputBridge {
     fn extract_string(data: &dora_node_api::ArrowData) -> Option<String> {
         match data.0.data_type() {
             arrow::datatypes::DataType::Utf8 => {
-                let array = data.0.as_any().downcast_ref::<arrow::array::StringArray>()?;
+                let array = data
+                    .0
+                    .as_any()
+                    .downcast_ref::<arrow::array::StringArray>()?;
                 if array.len() > 0 {
                     return Some(array.value(0).to_string());
                 }
@@ -295,15 +306,15 @@ impl PromptInputBridge {
 
         info!("Sending prompt to dora: {}", prompt);
         let data = payload.to_string().into_arrow();
-        let output_id: DataId = "control".to_string().into();  // Use control output
+        let output_id: DataId = "control".to_string().into(); // Use control output
         node.send_output(output_id, Default::default(), data)
             .map_err(|e| BridgeError::SendFailed(e.to_string()))
     }
 
     /// Send control command to dora
     fn send_control_to_dora(node: &mut DoraNode, cmd: &ControlCommand) -> BridgeResult<()> {
-        let payload = serde_json::to_string(cmd)
-            .map_err(|e| BridgeError::SendFailed(e.to_string()))?;
+        let payload =
+            serde_json::to_string(cmd).map_err(|e| BridgeError::SendFailed(e.to_string()))?;
 
         let data = payload.into_arrow();
         let output_id: DataId = "control".to_string().into();
@@ -411,7 +422,7 @@ impl DoraBridge for PromptInputBridge {
     }
 
     fn expected_outputs(&self) -> Vec<String> {
-        vec!["control".to_string()]  // Prompts are sent via control output as JSON
+        vec!["control".to_string()] // Prompts are sent via control output as JSON
     }
 }
 

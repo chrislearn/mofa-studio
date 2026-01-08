@@ -11,10 +11,10 @@ use crate::parser::MofaNodeSpec;
 use crate::widgets::{AudioPlayerBridge, PromptInputBridge, SystemLogBridge};
 use crate::MofaNodeType;
 use crossbeam_channel::Receiver;
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::RwLock;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 /// Binding between a widget and its dora node
 #[derive(Debug, Clone)]
@@ -72,15 +72,9 @@ impl DynamicNodeDispatcher {
 
         for node_spec in mofa_nodes {
             let bridge: Box<dyn DoraBridge> = match node_spec.node_type {
-                MofaNodeType::AudioPlayer => {
-                    Box::new(AudioPlayerBridge::new(&node_spec.id))
-                }
-                MofaNodeType::SystemLog => {
-                    Box::new(SystemLogBridge::new(&node_spec.id))
-                }
-                MofaNodeType::PromptInput => {
-                    Box::new(PromptInputBridge::new(&node_spec.id))
-                }
+                MofaNodeType::AudioPlayer => Box::new(AudioPlayerBridge::new(&node_spec.id)),
+                MofaNodeType::SystemLog => Box::new(SystemLogBridge::new(&node_spec.id)),
+                MofaNodeType::PromptInput => Box::new(PromptInputBridge::new(&node_spec.id)),
                 MofaNodeType::MicInput => {
                     // TODO: Implement MicInputBridge
                     continue;
@@ -131,7 +125,8 @@ impl DynamicNodeDispatcher {
                 Ok(()) => {
                     info!("Connected bridge: {}", node_id);
                     // Update binding state
-                    if let Some(binding) = self.bindings.iter_mut().find(|b| &b.node_id == node_id) {
+                    if let Some(binding) = self.bindings.iter_mut().find(|b| &b.node_id == node_id)
+                    {
                         binding.state = BridgeState::Connected;
                     }
                 }
@@ -157,7 +152,8 @@ impl DynamicNodeDispatcher {
             match bridge.disconnect() {
                 Ok(()) => {
                     debug!("Disconnected bridge: {}", node_id);
-                    if let Some(binding) = self.bindings.iter_mut().find(|b| &b.node_id == node_id) {
+                    if let Some(binding) = self.bindings.iter_mut().find(|b| &b.node_id == node_id)
+                    {
                         binding.state = BridgeState::Disconnected;
                     }
                 }
@@ -220,8 +216,35 @@ impl DynamicNodeDispatcher {
 
         info!("Connecting {} bridges to dora...", self.bridges.len());
 
-        // Connect all bridges
-        self.connect_all()?;
+        const MAX_CONNECT_ATTEMPTS: usize = 15;
+        let connect_retry_delay = std::time::Duration::from_secs(2);
+
+        let mut last_err: Option<BridgeError> = None;
+        for attempt in 1..=MAX_CONNECT_ATTEMPTS {
+            match self.connect_all() {
+                Ok(()) => {
+                    info!("All bridges connected after {} attempt(s)", attempt);
+                    last_err = None;
+                    break;
+                }
+                Err(e) => {
+                    warn!(
+                        "Bridge connection attempt {} failed: {}. Retrying...",
+                        attempt, e
+                    );
+                    last_err = Some(e);
+                    std::thread::sleep(connect_retry_delay);
+                }
+            }
+        }
+
+        if let Some(err) = last_err {
+            error!(
+                "Failed to connect bridges after {} attempts: {}",
+                MAX_CONNECT_ATTEMPTS, err
+            );
+            return Err(err);
+        }
 
         Ok(dataflow_id)
     }
@@ -241,7 +264,10 @@ impl DynamicNodeDispatcher {
     /// Stop the dataflow with a custom grace duration
     ///
     /// After the grace duration, nodes that haven't stopped will be killed (SIGKILL).
-    pub fn stop_with_grace_duration(&mut self, grace_duration: std::time::Duration) -> BridgeResult<()> {
+    pub fn stop_with_grace_duration(
+        &mut self,
+        grace_duration: std::time::Duration,
+    ) -> BridgeResult<()> {
         // Disconnect bridges first
         self.disconnect_all()?;
 
@@ -317,7 +343,8 @@ impl DispatcherBuilder {
     }
 
     pub fn build(self) -> BridgeResult<DynamicNodeDispatcher> {
-        let controller = self.controller
+        let controller = self
+            .controller
             .ok_or_else(|| BridgeError::Unknown("No controller provided".to_string()))?;
 
         let mut dispatcher = DynamicNodeDispatcher::new(controller);

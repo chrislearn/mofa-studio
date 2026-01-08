@@ -11,7 +11,10 @@ use crate::data::{AudioData, DoraData, EventMetadata};
 use crate::error::{BridgeError, BridgeResult};
 use arrow::array::Array;
 use crossbeam_channel::{bounded, Receiver, Sender};
-use dora_node_api::{DoraNode, Event, IntoArrow, dora_core::config::{NodeId, DataId}, Parameter};
+use dora_node_api::{
+    dora_core::config::{DataId, NodeId},
+    DoraNode, Event, IntoArrow, Parameter,
+};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use std::thread;
@@ -91,26 +94,29 @@ impl AudioPlayerBridge {
         info!("Starting audio player bridge event loop for {}", node_id);
 
         // Initialize dora node
-        let (mut node, mut events) = match DoraNode::init_from_node_id(NodeId::from(node_id.clone())) {
-            Ok(n) => n,
-            Err(e) => {
-                error!("Failed to init dora node {}: {}", node_id, e);
-                *state.write() = BridgeState::Error;
-                let _ = event_sender.send(BridgeEvent::Error(format!("Init failed: {}", e)));
-                return;
-            }
-        };
+        let (mut node, mut events) =
+            match DoraNode::init_from_node_id(NodeId::from(node_id.clone())) {
+                Ok(n) => n,
+                Err(e) => {
+                    error!("Failed to init dora node {}: {}", node_id, e);
+                    *state.write() = BridgeState::Error;
+                    let _ = event_sender.send(BridgeEvent::Error(format!("Init failed: {}", e)));
+                    return;
+                }
+            };
 
         *state.write() = BridgeState::Connected;
         let _ = event_sender.send(BridgeEvent::Connected);
 
         // Session tracking - track which question_ids we've sent session_start for
         // to avoid flooding the controller with duplicate signals
-        let mut session_start_sent_for: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut session_start_sent_for: std::collections::HashSet<String> =
+            std::collections::HashSet::new();
 
         // Active participant tracking for LED visualization
         let mut active_participant: Option<String> = None;
-        let mut active_switch_for: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut active_switch_for: std::collections::HashSet<String> =
+            std::collections::HashSet::new();
 
         // Event loop
         loop {
@@ -190,9 +196,7 @@ impl AudioPlayerBridge {
                         let sample_count = audio_data.samples.len();
                         debug!(
                             "Received audio: {} samples, {}Hz from {}",
-                            sample_count,
-                            audio_data.sample_rate,
-                            input_id
+                            sample_count, audio_data.sample_rate, input_id
                         );
 
                         // Extract participant ID from input_id (e.g., "audio_student1" -> "student1")
@@ -211,16 +215,22 @@ impl AudioPlayerBridge {
                         if let Some(qid) = question_id {
                             // Only send if we haven't sent for this question_id yet
                             if !session_start_sent_for.contains(qid) {
-                                if let Err(e) = Self::send_session_start(node, input_id, &event_meta) {
+                                if let Err(e) =
+                                    Self::send_session_start(node, input_id, &event_meta)
+                                {
                                     warn!("Failed to send session_start: {}", e);
                                 } else {
-                                    info!("Session started for question_id={} (first audio chunk)", qid);
+                                    info!(
+                                        "Session started for question_id={} (first audio chunk)",
+                                        qid
+                                    );
                                     session_start_sent_for.insert(qid.to_string());
 
                                     // Keep the set size bounded (only track last 100 question_ids)
                                     if session_start_sent_for.len() > 100 {
                                         // Remove oldest entries (approximation)
-                                        let to_remove: Vec<_> = session_start_sent_for.iter()
+                                        let to_remove: Vec<_> = session_start_sent_for
+                                            .iter()
                                             .take(50)
                                             .cloned()
                                             .collect();
@@ -241,10 +251,8 @@ impl AudioPlayerBridge {
 
                                 // Keep the set size bounded
                                 if active_switch_for.len() > 100 {
-                                    let to_remove: Vec<_> = active_switch_for.iter()
-                                        .take(50)
-                                        .cloned()
-                                        .collect();
+                                    let to_remove: Vec<_> =
+                                        active_switch_for.iter().take(50).cloned().collect();
                                     for key in to_remove {
                                         active_switch_for.remove(&key);
                                     }
@@ -282,7 +290,11 @@ impl AudioPlayerBridge {
                         if let Err(e) = Self::send_audio_complete(node, input_id, &event_meta) {
                             warn!("Failed to send audio_complete: {}", e);
                         } else {
-                            debug!("Sent audio_complete for {} (qid={:?})", input_id, event_meta.get("question_id"));
+                            debug!(
+                                "Sent audio_complete for {} (qid={:?})",
+                                input_id,
+                                event_meta.get("question_id")
+                            );
                         }
                     }
                 }
@@ -300,7 +312,11 @@ impl AudioPlayerBridge {
 
     /// Send audio_complete signal to notify text-segmenter that audio was received
     /// Matches conference-dashboard's implementation for compatibility
-    fn send_audio_complete(node: &mut DoraNode, input_id: &str, metadata: &EventMetadata) -> BridgeResult<()> {
+    fn send_audio_complete(
+        node: &mut DoraNode,
+        input_id: &str,
+        metadata: &EventMetadata,
+    ) -> BridgeResult<()> {
         use std::collections::BTreeMap;
 
         // Extract participant from input_id (e.g., "audio_student1" -> "student1")
@@ -333,8 +349,12 @@ impl AudioPlayerBridge {
         let data = vec!["received".to_string()].into_arrow();
         let output_id: DataId = "audio_complete".to_string().into();
 
-        debug!("Sending audio_complete for participant: {} (question_id={:?}, session_status={:?})",
-            participant, metadata.get("question_id"), metadata.get("session_status"));
+        debug!(
+            "Sending audio_complete for participant: {} (question_id={:?}, session_status={:?})",
+            participant,
+            metadata.get("question_id"),
+            metadata.get("session_status")
+        );
 
         node.send_output(output_id, params, data)
             .map_err(|e| BridgeError::SendFailed(e.to_string()))
@@ -342,7 +362,11 @@ impl AudioPlayerBridge {
 
     /// Send session_start signal to notify conference-controller that audio playback has begun
     /// This is critical for the controller to advance to the next speaker
-    fn send_session_start(node: &mut DoraNode, input_id: &str, metadata: &EventMetadata) -> BridgeResult<()> {
+    fn send_session_start(
+        node: &mut DoraNode,
+        input_id: &str,
+        metadata: &EventMetadata,
+    ) -> BridgeResult<()> {
         use std::collections::BTreeMap;
 
         // Extract participant from input_id (e.g., "audio_student1" -> "student1")
@@ -381,8 +405,11 @@ impl AudioPlayerBridge {
         let data = vec!["audio_started".to_string()].into_arrow();
         let output_id: DataId = "session_start".to_string().into();
 
-        info!("Sending session_start for participant: {} (question_id={:?})",
-            participant, metadata.get("question_id"));
+        info!(
+            "Sending session_start for participant: {} (question_id={:?})",
+            participant,
+            metadata.get("question_id")
+        );
 
         node.send_output(output_id, params, data)
             .map_err(|e| BridgeError::SendFailed(e.to_string()))
@@ -390,8 +417,11 @@ impl AudioPlayerBridge {
 
     /// Extract audio data from dora arrow data
     /// Handles multiple formats: Float32, Float64, Int16, ListArray, LargeListArray
-    fn extract_audio(data: &dora_node_api::ArrowData, metadata: &EventMetadata) -> Option<AudioData> {
-        use arrow::array::{Float32Array, Float64Array, Int16Array, ListArray, LargeListArray};
+    fn extract_audio(
+        data: &dora_node_api::ArrowData,
+        metadata: &EventMetadata,
+    ) -> Option<AudioData> {
+        use arrow::array::{Float32Array, Float64Array, Int16Array, LargeListArray, ListArray};
         use arrow::datatypes::DataType;
 
         let array = &data.0;
@@ -401,18 +431,18 @@ impl AudioPlayerBridge {
 
         // Try to extract f32 array
         let samples: Vec<f32> = match array.data_type() {
-            DataType::Float32 => {
-                array.as_any().downcast_ref::<Float32Array>()
-                    .map(|arr| arr.values().to_vec())?
-            }
-            DataType::Float64 => {
-                array.as_any().downcast_ref::<Float64Array>()
-                    .map(|arr| arr.values().iter().map(|&x| x as f32).collect())?
-            }
-            DataType::Int16 => {
-                array.as_any().downcast_ref::<Int16Array>()
-                    .map(|arr| arr.values().iter().map(|&x| x as f32 / 32768.0).collect())?
-            }
+            DataType::Float32 => array
+                .as_any()
+                .downcast_ref::<Float32Array>()
+                .map(|arr| arr.values().to_vec())?,
+            DataType::Float64 => array
+                .as_any()
+                .downcast_ref::<Float64Array>()
+                .map(|arr| arr.values().iter().map(|&x| x as f32).collect())?,
+            DataType::Int16 => array
+                .as_any()
+                .downcast_ref::<Int16Array>()
+                .map(|arr| arr.values().iter().map(|&x| x as f32 / 32768.0).collect())?,
             // Handle ListArray<Float32> - primespeech sends pa.array([audio_array])
             DataType::List(_) | DataType::LargeList(_) => {
                 debug!("Audio data is ListArray, extracting inner array");
@@ -421,14 +451,20 @@ impl AudioPlayerBridge {
                 if let Some(list_arr) = array.as_any().downcast_ref::<ListArray>() {
                     if list_arr.len() > 0 {
                         let first_value = list_arr.value(0);
-                        if let Some(float_arr) = first_value.as_any().downcast_ref::<Float32Array>() {
+                        if let Some(float_arr) = first_value.as_any().downcast_ref::<Float32Array>()
+                        {
                             debug!("Extracted {} f32 samples from ListArray", float_arr.len());
                             float_arr.values().to_vec()
-                        } else if let Some(float_arr) = first_value.as_any().downcast_ref::<Float64Array>() {
+                        } else if let Some(float_arr) =
+                            first_value.as_any().downcast_ref::<Float64Array>()
+                        {
                             debug!("Extracted {} f64 samples from ListArray", float_arr.len());
                             float_arr.values().iter().map(|&v| v as f32).collect()
                         } else {
-                            warn!("ListArray inner type not Float32/Float64: {:?}", first_value.data_type());
+                            warn!(
+                                "ListArray inner type not Float32/Float64: {:?}",
+                                first_value.data_type()
+                            );
                             return None;
                         }
                     } else {
@@ -437,14 +473,26 @@ impl AudioPlayerBridge {
                 } else if let Some(list_arr) = array.as_any().downcast_ref::<LargeListArray>() {
                     if list_arr.len() > 0 {
                         let first_value = list_arr.value(0);
-                        if let Some(float_arr) = first_value.as_any().downcast_ref::<Float32Array>() {
-                            debug!("Extracted {} f32 samples from LargeListArray", float_arr.len());
+                        if let Some(float_arr) = first_value.as_any().downcast_ref::<Float32Array>()
+                        {
+                            debug!(
+                                "Extracted {} f32 samples from LargeListArray",
+                                float_arr.len()
+                            );
                             float_arr.values().to_vec()
-                        } else if let Some(float_arr) = first_value.as_any().downcast_ref::<Float64Array>() {
-                            debug!("Extracted {} f64 samples from LargeListArray", float_arr.len());
+                        } else if let Some(float_arr) =
+                            first_value.as_any().downcast_ref::<Float64Array>()
+                        {
+                            debug!(
+                                "Extracted {} f64 samples from LargeListArray",
+                                float_arr.len()
+                            );
                             float_arr.values().iter().map(|&v| v as f32).collect()
                         } else {
-                            warn!("LargeListArray inner type not Float32/Float64: {:?}", first_value.data_type());
+                            warn!(
+                                "LargeListArray inner type not Float32/Float64: {:?}",
+                                first_value.data_type()
+                            );
                             return None;
                         }
                     } else {

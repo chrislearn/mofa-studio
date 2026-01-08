@@ -9,9 +9,9 @@
 //! (more accurate since it reflects what's actually being played)
 
 mod audio_player;
-mod system_log;
 mod prompt_input;
+mod system_log;
 
 pub use audio_player::AudioPlayerBridge;
-pub use system_log::SystemLogBridge;
 pub use prompt_input::PromptInputBridge;
+pub use system_log::SystemLogBridge;
