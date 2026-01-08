@@ -11,11 +11,12 @@ use makepad_widgets::*;
 use mofa_studio_shell::widgets::sidebar::SidebarWidgetRefExt;
 
 // App plugin system imports
-use mofa_widgets::{MofaApp, AppRegistry};
+use colang::{ColangApp, ColangScreenWidgetRefExt};
 use mofa_fm::{MoFaFMApp, MoFaFMScreenWidgetRefExt};
-use mofa_settings::MoFaSettingsApp;
 use mofa_settings::data::Preferences;
 use mofa_settings::screen::SettingsScreenWidgetRefExt;
+use mofa_settings::MoFaSettingsApp;
+use mofa_widgets::{AppRegistry, MofaApp};
 
 // ============================================================================
 // TAB IDENTIFIER
@@ -71,6 +72,7 @@ live_design! {
 
     use mofa_studio_shell::widgets::sidebar::Sidebar;
     use mofa_fm::screen::MoFaFMScreen;
+    use colang::screen::ColangScreen;
     use mofa_settings::screen::SettingsScreen;
 
     // Logo image
@@ -436,6 +438,11 @@ live_design! {
                         flow: Overlay
 
                         fm_page = <MoFaFMScreen> {
+                            width: Fill, height: Fill
+                            visible: true
+                        }
+
+                        colang_page = <ColangScreen> {
                             width: Fill, height: Fill
                             visible: true
                         }
@@ -840,6 +847,7 @@ impl LiveHook for App {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
         // Initialize the app registry with all installed apps
         self.app_registry.register(MoFaFMApp::info());
+        self.app_registry.register(ColangApp::info());
         self.app_registry.register(MoFaSettingsApp::info());
 
         // Load user preferences and restore dark mode
@@ -887,6 +895,7 @@ impl LiveRegister for App {
         // Register apps via MofaApp trait
         // Note: Widget types in live_design! macro still require compile-time imports
         // (Makepad constraint), but registration uses the standardized trait interface
+        <ColangApp as MofaApp>::live_design(cx);
         <MoFaFMApp as MofaApp>::live_design(cx);
         <MoFaSettingsApp as MofaApp>::live_design(cx);
     }
@@ -979,17 +988,25 @@ impl App {
         }
 
         let user_btn_x = window_width - 80.0;
-        self.ui.view(ids!(user_btn_overlay)).apply_over(cx, live!{
-            abs_pos: (dvec2(user_btn_x, 10.0))
-        });
+        self.ui.view(ids!(user_btn_overlay)).apply_over(
+            cx,
+            live! {
+                abs_pos: (dvec2(user_btn_x, 10.0))
+            },
+        );
 
         let user_menu_x = window_width - 150.0;
-        self.ui.view(ids!(user_menu)).apply_over(cx, live!{
-            abs_pos: (dvec2(user_menu_x, 55.0))
-        });
+        self.ui.view(ids!(user_menu)).apply_over(
+            cx,
+            live! {
+                abs_pos: (dvec2(user_menu_x, 55.0))
+            },
+        );
 
         let max_scroll_height = (window_height - 230.0).max(200.0);
-        self.ui.sidebar(ids!(sidebar_menu_overlay.sidebar_content)).set_max_scroll_height(max_scroll_height);
+        self.ui
+            .sidebar(ids!(sidebar_menu_overlay.sidebar_content))
+            .set_max_scroll_height(max_scroll_height);
 
         self.ui.redraw(cx);
     }
@@ -1042,13 +1059,21 @@ impl App {
 
     /// Handle user menu button clicks
     fn handle_user_menu_clicks(&mut self, cx: &mut Cx, actions: &[Action]) {
-        if self.ui.button(ids!(user_menu.menu_profile_btn)).clicked(actions) {
+        if self
+            .ui
+            .button(ids!(user_menu.menu_profile_btn))
+            .clicked(actions)
+        {
             self.user_menu_open = false;
             self.ui.view(ids!(user_menu)).set_visible(cx, false);
             self.open_or_switch_tab(cx, TabId::Profile);
         }
 
-        if self.ui.button(ids!(user_menu.menu_settings_btn)).clicked(actions) {
+        if self
+            .ui
+            .button(ids!(user_menu.menu_settings_btn))
+            .clicked(actions)
+        {
             self.user_menu_open = false;
             self.ui.view(ids!(user_menu)).set_visible(cx, false);
             self.open_or_switch_tab(cx, TabId::Settings);
@@ -1061,15 +1086,25 @@ impl App {
 
         match event.hits(cx, theme_btn.area()) {
             Hit::FingerHoverIn(_) => {
-                self.ui.view(ids!(body.dashboard_base.header.theme_toggle)).apply_over(cx, live!{
-                    draw_bg: { hover: 1.0 }
-                });
+                self.ui
+                    .view(ids!(body.dashboard_base.header.theme_toggle))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_bg: { hover: 1.0 }
+                        },
+                    );
                 self.ui.redraw(cx);
             }
             Hit::FingerHoverOut(_) => {
-                self.ui.view(ids!(body.dashboard_base.header.theme_toggle)).apply_over(cx, live!{
-                    draw_bg: { hover: 0.0 }
-                });
+                self.ui
+                    .view(ids!(body.dashboard_base.header.theme_toggle))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_bg: { hover: 0.0 }
+                        },
+                    );
                 self.ui.redraw(cx);
             }
             Hit::FingerUp(_) => {
@@ -1090,8 +1125,12 @@ impl App {
     /// Update the theme toggle icon based on current mode
     fn update_theme_toggle_icon(&mut self, cx: &mut Cx) {
         let is_dark = self.dark_mode;
-        self.ui.view(ids!(body.dashboard_base.header.theme_toggle.sun_icon)).set_visible(cx, !is_dark);
-        self.ui.view(ids!(body.dashboard_base.header.theme_toggle.moon_icon)).set_visible(cx, is_dark);
+        self.ui
+            .view(ids!(body.dashboard_base.header.theme_toggle.sun_icon))
+            .set_visible(cx, !is_dark);
+        self.ui
+            .view(ids!(body.dashboard_base.header.theme_toggle.moon_icon))
+            .set_visible(cx, is_dark);
         self.ui.redraw(cx);
     }
 }
@@ -1141,56 +1180,276 @@ impl App {
 
     /// Handle sidebar menu item clicks
     fn handle_sidebar_clicks(&mut self, cx: &mut Cx, actions: &[Action]) {
-        // MoFA FM tab
-        if self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.mofa_fm_tab)).clicked(actions) {
+        // Colang tab
+        if self
+            .ui
+            .button(ids!(sidebar_menu_overlay.sidebar_content.colang_tab))
+            .clicked(actions)
+        {
             self.sidebar_menu_open = false;
             self.start_sidebar_slide_out(cx);
             self.open_tabs.clear();
             self.active_tab = None;
             self.ui.view(ids!(body.tab_overlay)).set_visible(cx, false);
-            self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.fm_page)).apply_over(cx, live!{ visible: true });
-            self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.app_page)).apply_over(cx, live!{ visible: false });
-            self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.settings_page)).apply_over(cx, live!{ visible: false });
-            self.ui.mo_fa_fmscreen(ids!(body.dashboard_base.content_area.main_content.content.fm_page)).start_timers(cx);
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .colang_page
+                ))
+                .apply_over(cx, live! { visible: true });
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .app_page
+                ))
+                .apply_over(cx, live! { visible: false });
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .settings_page
+                ))
+                .apply_over(cx, live! { visible: false });
+            self.ui
+                .mo_fa_fmscreen(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .colang_page
+                ))
+                .start_timers(cx);
+            self.ui.redraw(cx);
+        }
+        // MoFA FM tab
+        if self
+            .ui
+            .button(ids!(sidebar_menu_overlay.sidebar_content.mofa_fm_tab))
+            .clicked(actions)
+        {
+            self.sidebar_menu_open = false;
+            self.start_sidebar_slide_out(cx);
+            self.open_tabs.clear();
+            self.active_tab = None;
+            self.ui.view(ids!(body.tab_overlay)).set_visible(cx, false);
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .fm_page
+                ))
+                .apply_over(cx, live! { visible: true });
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .app_page
+                ))
+                .apply_over(cx, live! { visible: false });
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .settings_page
+                ))
+                .apply_over(cx, live! { visible: false });
+            self.ui
+                .mo_fa_fmscreen(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .fm_page
+                ))
+                .start_timers(cx);
             self.ui.redraw(cx);
         }
 
         // Settings tab
-        if self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.settings_tab)).clicked(actions) {
+        if self
+            .ui
+            .button(ids!(sidebar_menu_overlay.sidebar_content.settings_tab))
+            .clicked(actions)
+        {
             self.sidebar_menu_open = false;
             self.start_sidebar_slide_out(cx);
             self.open_tabs.clear();
             self.active_tab = None;
             self.ui.view(ids!(body.tab_overlay)).set_visible(cx, false);
-            self.ui.mo_fa_fmscreen(ids!(body.dashboard_base.content_area.main_content.content.fm_page)).stop_timers(cx);
-            self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.fm_page)).apply_over(cx, live!{ visible: false });
-            self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.app_page)).apply_over(cx, live!{ visible: false });
-            self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.settings_page)).apply_over(cx, live!{ visible: true });
+            self.ui
+                .mo_fa_fmscreen(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .fm_page
+                ))
+                .stop_timers(cx);
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .fm_page
+                ))
+                .apply_over(cx, live! { visible: false });
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .app_page
+                ))
+                .apply_over(cx, live! { visible: false });
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .settings_page
+                ))
+                .apply_over(cx, live! { visible: true });
             self.ui.redraw(cx);
         }
 
         // App buttons (1-20) - check if any was clicked
-        let app_clicked =
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app1_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app2_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app3_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app4_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app5_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app6_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app7_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app8_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app9_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app10_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app11_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app12_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app13_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app14_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app15_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app16_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app17_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app18_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app19_btn)).clicked(actions) ||
-            self.ui.button(ids!(sidebar_menu_overlay.sidebar_content.apps_scroll.app20_btn)).clicked(actions);
+        let app_clicked = self
+            .ui
+            .button(ids!(
+                sidebar_menu_overlay.sidebar_content.apps_scroll.app1_btn
+            ))
+            .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app2_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app3_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app4_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app5_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app6_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app7_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app8_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app9_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app10_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app11_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app12_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app13_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app14_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app15_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app16_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app17_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app18_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app19_btn
+                ))
+                .clicked(actions)
+            || self
+                .ui
+                .button(ids!(
+                    sidebar_menu_overlay.sidebar_content.apps_scroll.app20_btn
+                ))
+                .clicked(actions);
 
         if app_clicked {
             self.sidebar_menu_open = false;
@@ -1198,10 +1457,42 @@ impl App {
             self.open_tabs.clear();
             self.active_tab = None;
             self.ui.view(ids!(body.tab_overlay)).set_visible(cx, false);
-            self.ui.mo_fa_fmscreen(ids!(body.dashboard_base.content_area.main_content.content.fm_page)).stop_timers(cx);
-            self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.fm_page)).apply_over(cx, live!{ visible: false });
-            self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.app_page)).apply_over(cx, live!{ visible: true });
-            self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.settings_page)).apply_over(cx, live!{ visible: false });
+            self.ui
+                .mo_fa_fmscreen(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .fm_page
+                ))
+                .stop_timers(cx);
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .fm_page
+                ))
+                .apply_over(cx, live! { visible: false });
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .app_page
+                ))
+                .apply_over(cx, live! { visible: true });
+            self.ui
+                .view(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .settings_page
+                ))
+                .apply_over(cx, live! { visible: false });
             self.ui.redraw(cx);
         }
     }
@@ -1227,15 +1518,22 @@ impl App {
             -SIDEBAR_WIDTH * eased
         };
 
-        self.ui.view(ids!(sidebar_menu_overlay)).apply_over(cx, live!{
-            abs_pos: (dvec2(x, 52.0))
-        });
+        self.ui.view(ids!(sidebar_menu_overlay)).apply_over(
+            cx,
+            live! {
+                abs_pos: (dvec2(x, 52.0))
+            },
+        );
 
         if progress >= 1.0 {
             self.sidebar_animating = false;
             if !self.sidebar_slide_in {
-                self.ui.view(ids!(sidebar_menu_overlay)).set_visible(cx, false);
-                self.ui.sidebar(ids!(sidebar_menu_overlay.sidebar_content)).collapse_show_more(cx);
+                self.ui
+                    .view(ids!(sidebar_menu_overlay))
+                    .set_visible(cx, false);
+                self.ui
+                    .sidebar(ids!(sidebar_menu_overlay.sidebar_content))
+                    .collapse_show_more(cx);
             }
         }
 
@@ -1247,11 +1545,18 @@ impl App {
         self.sidebar_animating = true;
         self.sidebar_animation_start = Cx::time_now();
         self.sidebar_slide_in = true;
-        self.ui.view(ids!(sidebar_menu_overlay)).apply_over(cx, live!{
-            abs_pos: (dvec2(-250.0, 52.0))
-        });
-        self.ui.view(ids!(sidebar_menu_overlay)).set_visible(cx, true);
-        self.ui.sidebar(ids!(sidebar_menu_overlay.sidebar_content)).restore_selection_state(cx);
+        self.ui.view(ids!(sidebar_menu_overlay)).apply_over(
+            cx,
+            live! {
+                abs_pos: (dvec2(-250.0, 52.0))
+            },
+        );
+        self.ui
+            .view(ids!(sidebar_menu_overlay))
+            .set_visible(cx, true);
+        self.ui
+            .sidebar(ids!(sidebar_menu_overlay.sidebar_content))
+            .restore_selection_state(cx);
         self.ui.redraw(cx);
     }
 
@@ -1310,103 +1615,227 @@ impl App {
         let dm = self.dark_mode_anim;
 
         // Apply to main app background (Dashboard)
-        self.ui.view(ids!(body)).apply_over(cx, live!{
-            draw_bg: { dark_mode: (dm) }
-        });
+        self.ui.view(ids!(body)).apply_over(
+            cx,
+            live! {
+                draw_bg: { dark_mode: (dm) }
+            },
+        );
 
         // Apply to header
-        self.ui.view(ids!(body.dashboard_base.header)).apply_over(cx, live!{
-            draw_bg: { dark_mode: (dm) }
-        });
+        self.ui.view(ids!(body.dashboard_base.header)).apply_over(
+            cx,
+            live! {
+                draw_bg: { dark_mode: (dm) }
+            },
+        );
 
         // Apply to sidebar menu overlay
-        self.ui.view(ids!(sidebar_menu_overlay)).apply_over(cx, live!{
-            draw_bg: { dark_mode: (dm) }
-        });
+        self.ui.view(ids!(sidebar_menu_overlay)).apply_over(
+            cx,
+            live! {
+                draw_bg: { dark_mode: (dm) }
+            },
+        );
 
         // Apply to sidebar content (this is safe, sidebar widget handles it internally)
-        self.ui.sidebar(ids!(sidebar_menu_overlay.sidebar_content))
+        self.ui
+            .sidebar(ids!(sidebar_menu_overlay.sidebar_content))
             .update_dark_mode(cx, dm);
 
         // Apply to user menu
-        self.ui.view(ids!(user_menu)).apply_over(cx, live!{
-            draw_bg: { dark_mode: (dm) }
-        });
+        self.ui.view(ids!(user_menu)).apply_over(
+            cx,
+            live! {
+                draw_bg: { dark_mode: (dm) }
+            },
+        );
 
         // Apply to user menu buttons
-        self.ui.button(ids!(user_menu.menu_profile_btn)).apply_over(cx, live!{
-            draw_bg: { dark_mode: (dm) }
-            draw_text: { dark_mode: (dm) }
-        });
-        self.ui.button(ids!(user_menu.menu_settings_btn)).apply_over(cx, live!{
-            draw_bg: { dark_mode: (dm) }
-            draw_text: { dark_mode: (dm) }
-        });
-        self.ui.view(ids!(user_menu.menu_divider)).apply_over(cx, live!{
-            draw_bg: { dark_mode: (dm) }
-        });
+        self.ui.button(ids!(user_menu.menu_profile_btn)).apply_over(
+            cx,
+            live! {
+                draw_bg: { dark_mode: (dm) }
+                draw_text: { dark_mode: (dm) }
+            },
+        );
+        self.ui
+            .button(ids!(user_menu.menu_settings_btn))
+            .apply_over(
+                cx,
+                live! {
+                    draw_bg: { dark_mode: (dm) }
+                    draw_text: { dark_mode: (dm) }
+                },
+            );
+        self.ui.view(ids!(user_menu.menu_divider)).apply_over(
+            cx,
+            live! {
+                draw_bg: { dark_mode: (dm) }
+            },
+        );
 
         // Apply to tab overlay - only when tabs are open
         if !self.open_tabs.is_empty() {
-            self.ui.view(ids!(body.tab_overlay)).apply_over(cx, live!{
-                draw_bg: { dark_mode: (dm) }
-            });
+            self.ui.view(ids!(body.tab_overlay)).apply_over(
+                cx,
+                live! {
+                    draw_bg: { dark_mode: (dm) }
+                },
+            );
 
             // Apply to tab bar
-            self.ui.view(ids!(body.tab_overlay.tab_bar)).apply_over(cx, live!{
-                draw_bg: { dark_mode: (dm) }
-            });
+            self.ui.view(ids!(body.tab_overlay.tab_bar)).apply_over(
+                cx,
+                live! {
+                    draw_bg: { dark_mode: (dm) }
+                },
+            );
 
             // Apply to tab widgets
             if self.open_tabs.contains(&TabId::Profile) {
-                self.ui.view(ids!(body.tab_overlay.tab_bar.profile_tab)).apply_over(cx, live!{
-                    draw_bg: { dark_mode: (dm) }
-                });
-                self.ui.label(ids!(body.tab_overlay.tab_bar.profile_tab.tab_label)).apply_over(cx, live!{
-                    draw_text: { dark_mode: (dm) }
-                });
-                self.ui.view(ids!(body.tab_overlay.tab_bar.profile_tab.close_btn)).apply_over(cx, live!{
-                    draw_bg: { dark_mode: (dm) }
-                });
+                self.ui
+                    .view(ids!(body.tab_overlay.tab_bar.profile_tab))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_bg: { dark_mode: (dm) }
+                        },
+                    );
+                self.ui
+                    .label(ids!(body.tab_overlay.tab_bar.profile_tab.tab_label))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_text: { dark_mode: (dm) }
+                        },
+                    );
+                self.ui
+                    .view(ids!(body.tab_overlay.tab_bar.profile_tab.close_btn))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_bg: { dark_mode: (dm) }
+                        },
+                    );
             }
 
             if self.open_tabs.contains(&TabId::Settings) {
-                self.ui.view(ids!(body.tab_overlay.tab_bar.settings_tab)).apply_over(cx, live!{
-                    draw_bg: { dark_mode: (dm) }
-                });
-                self.ui.label(ids!(body.tab_overlay.tab_bar.settings_tab.tab_label)).apply_over(cx, live!{
-                    draw_text: { dark_mode: (dm) }
-                });
-                self.ui.view(ids!(body.tab_overlay.tab_bar.settings_tab.close_btn)).apply_over(cx, live!{
-                    draw_bg: { dark_mode: (dm) }
-                });
+                self.ui
+                    .view(ids!(body.tab_overlay.tab_bar.settings_tab))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_bg: { dark_mode: (dm) }
+                        },
+                    );
+                self.ui
+                    .label(ids!(body.tab_overlay.tab_bar.settings_tab.tab_label))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_text: { dark_mode: (dm) }
+                        },
+                    );
+                self.ui
+                    .view(ids!(body.tab_overlay.tab_bar.settings_tab.close_btn))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_bg: { dark_mode: (dm) }
+                        },
+                    );
             }
 
             // Tab content backgrounds
             if self.open_tabs.contains(&TabId::Profile) {
                 // Profile page background
-                self.ui.view(ids!(body.tab_overlay.tab_content.profile_page)).apply_over(cx, live!{
-                    draw_bg: { dark_mode: (dm) }
-                });
+                self.ui
+                    .view(ids!(body.tab_overlay.tab_content.profile_page))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_bg: { dark_mode: (dm) }
+                        },
+                    );
                 // Profile page internal widgets
-                self.ui.label(ids!(body.tab_overlay.tab_content.profile_page.profile_title)).apply_over(cx, live!{
-                    draw_text: { dark_mode: (dm) }
-                });
-                self.ui.view(ids!(body.tab_overlay.tab_content.profile_page.profile_divider)).apply_over(cx, live!{
-                    draw_bg: { dark_mode: (dm) }
-                });
-                self.ui.view(ids!(body.tab_overlay.tab_content.profile_page.profile_row.profile_avatar)).apply_over(cx, live!{
-                    draw_bg: { dark_mode: (dm) }
-                });
-                self.ui.label(ids!(body.tab_overlay.tab_content.profile_page.profile_row.profile_info.profile_name)).apply_over(cx, live!{
-                    draw_text: { dark_mode: (dm) }
-                });
-                self.ui.label(ids!(body.tab_overlay.tab_content.profile_page.profile_row.profile_info.profile_email)).apply_over(cx, live!{
-                    draw_text: { dark_mode: (dm) }
-                });
-                self.ui.label(ids!(body.tab_overlay.tab_content.profile_page.profile_coming_soon)).apply_over(cx, live!{
-                    draw_text: { dark_mode: (dm) }
-                });
+                self.ui
+                    .label(ids!(
+                        body.tab_overlay.tab_content.profile_page.profile_title
+                    ))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_text: { dark_mode: (dm) }
+                        },
+                    );
+                self.ui
+                    .view(ids!(
+                        body.tab_overlay.tab_content.profile_page.profile_divider
+                    ))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_bg: { dark_mode: (dm) }
+                        },
+                    );
+                self.ui
+                    .view(ids!(
+                        body.tab_overlay
+                            .tab_content
+                            .profile_page
+                            .profile_row
+                            .profile_avatar
+                    ))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_bg: { dark_mode: (dm) }
+                        },
+                    );
+                self.ui
+                    .label(ids!(
+                        body.tab_overlay
+                            .tab_content
+                            .profile_page
+                            .profile_row
+                            .profile_info
+                            .profile_name
+                    ))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_text: { dark_mode: (dm) }
+                        },
+                    );
+                self.ui
+                    .label(ids!(
+                        body.tab_overlay
+                            .tab_content
+                            .profile_page
+                            .profile_row
+                            .profile_info
+                            .profile_email
+                    ))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_text: { dark_mode: (dm) }
+                        },
+                    );
+                self.ui
+                    .label(ids!(
+                        body.tab_overlay
+                            .tab_content
+                            .profile_page
+                            .profile_coming_soon
+                    ))
+                    .apply_over(
+                        cx,
+                        live! {
+                            draw_text: { dark_mode: (dm) }
+                        },
+                    );
             }
         }
     }
@@ -1430,7 +1859,8 @@ impl App {
         // Apply to tab overlay content - only when tabs are open
         if !self.open_tabs.is_empty() {
             if self.open_tabs.contains(&TabId::Settings) {
-                self.ui.settings_screen(ids!(body.tab_overlay.tab_content.settings_tab_page))
+                self.ui
+                    .settings_screen(ids!(body.tab_overlay.tab_content.settings_tab_page))
                     .update_dark_mode(cx, dm);
             }
         }
@@ -1465,14 +1895,24 @@ impl App {
 
     /// Handle tab widget clicks
     fn handle_tab_clicks(&mut self, cx: &mut Cx, actions: &[Action]) {
-        if self.ui.view(ids!(body.tab_overlay.tab_bar.profile_tab)).finger_up(actions).is_some() {
+        if self
+            .ui
+            .view(ids!(body.tab_overlay.tab_bar.profile_tab))
+            .finger_up(actions)
+            .is_some()
+        {
             if self.open_tabs.contains(&TabId::Profile) {
                 self.active_tab = Some(TabId::Profile);
                 self.update_tab_ui(cx);
             }
         }
 
-        if self.ui.view(ids!(body.tab_overlay.tab_bar.settings_tab)).finger_up(actions).is_some() {
+        if self
+            .ui
+            .view(ids!(body.tab_overlay.tab_bar.settings_tab))
+            .finger_up(actions)
+            .is_some()
+        {
             if self.open_tabs.contains(&TabId::Settings) {
                 self.active_tab = Some(TabId::Settings);
                 self.update_tab_ui(cx);
@@ -1482,39 +1922,47 @@ impl App {
 
     /// Handle tab close button clicks
     fn handle_tab_close_clicks(&mut self, cx: &mut Cx, event: &Event) {
-        let profile_close = self.ui.view(ids!(body.tab_overlay.tab_bar.profile_tab.close_btn));
+        let profile_close = self
+            .ui
+            .view(ids!(body.tab_overlay.tab_bar.profile_tab.close_btn));
         match event.hits(cx, profile_close.area()) {
             Hit::FingerUp(_) => {
                 self.close_tab(cx, TabId::Profile);
                 return;
             }
             Hit::FingerHoverIn(_) => {
-                self.ui.view(ids!(body.tab_overlay.tab_bar.profile_tab.close_btn))
-                    .apply_over(cx, live!{ draw_bg: { hover: 1.0 } });
+                self.ui
+                    .view(ids!(body.tab_overlay.tab_bar.profile_tab.close_btn))
+                    .apply_over(cx, live! { draw_bg: { hover: 1.0 } });
                 self.ui.redraw(cx);
             }
             Hit::FingerHoverOut(_) => {
-                self.ui.view(ids!(body.tab_overlay.tab_bar.profile_tab.close_btn))
-                    .apply_over(cx, live!{ draw_bg: { hover: 0.0 } });
+                self.ui
+                    .view(ids!(body.tab_overlay.tab_bar.profile_tab.close_btn))
+                    .apply_over(cx, live! { draw_bg: { hover: 0.0 } });
                 self.ui.redraw(cx);
             }
             _ => {}
         }
 
-        let settings_close = self.ui.view(ids!(body.tab_overlay.tab_bar.settings_tab.close_btn));
+        let settings_close = self
+            .ui
+            .view(ids!(body.tab_overlay.tab_bar.settings_tab.close_btn));
         match event.hits(cx, settings_close.area()) {
             Hit::FingerUp(_) => {
                 self.close_tab(cx, TabId::Settings);
                 return;
             }
             Hit::FingerHoverIn(_) => {
-                self.ui.view(ids!(body.tab_overlay.tab_bar.settings_tab.close_btn))
-                    .apply_over(cx, live!{ draw_bg: { hover: 1.0 } });
+                self.ui
+                    .view(ids!(body.tab_overlay.tab_bar.settings_tab.close_btn))
+                    .apply_over(cx, live! { draw_bg: { hover: 1.0 } });
                 self.ui.redraw(cx);
             }
             Hit::FingerHoverOut(_) => {
-                self.ui.view(ids!(body.tab_overlay.tab_bar.settings_tab.close_btn))
-                    .apply_over(cx, live!{ draw_bg: { hover: 0.0 } });
+                self.ui
+                    .view(ids!(body.tab_overlay.tab_bar.settings_tab.close_btn))
+                    .apply_over(cx, live! { draw_bg: { hover: 0.0 } });
                 self.ui.redraw(cx);
             }
             _ => {}
@@ -1532,50 +1980,88 @@ impl App {
 
         let was_overlay_visible = self.ui.view(ids!(body.tab_overlay)).visible();
 
-        self.ui.view(ids!(body.tab_overlay)).set_visible(cx, any_tabs_open);
+        self.ui
+            .view(ids!(body.tab_overlay))
+            .set_visible(cx, any_tabs_open);
 
         // Manage FM page timers
         if any_tabs_open && !was_overlay_visible {
-            self.ui.mo_fa_fmscreen(ids!(body.dashboard_base.content_area.main_content.content.fm_page)).stop_timers(cx);
+            self.ui
+                .mo_fa_fmscreen(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .fm_page
+                ))
+                .stop_timers(cx);
         } else if !any_tabs_open && was_overlay_visible {
-            self.ui.mo_fa_fmscreen(ids!(body.dashboard_base.content_area.main_content.content.fm_page)).start_timers(cx);
+            self.ui
+                .mo_fa_fmscreen(ids!(
+                    body.dashboard_base
+                        .content_area
+                        .main_content
+                        .content
+                        .fm_page
+                ))
+                .start_timers(cx);
         }
 
         // Update tab visibility
-        self.ui.view(ids!(body.tab_overlay.tab_bar.profile_tab)).set_visible(cx, profile_open);
-        self.ui.view(ids!(body.tab_overlay.tab_bar.settings_tab)).set_visible(cx, settings_open);
+        self.ui
+            .view(ids!(body.tab_overlay.tab_bar.profile_tab))
+            .set_visible(cx, profile_open);
+        self.ui
+            .view(ids!(body.tab_overlay.tab_bar.settings_tab))
+            .set_visible(cx, settings_open);
 
         // Update profile tab active state
         let profile_active_val = if profile_active { 1.0 } else { 0.0 };
-        self.ui.view(ids!(body.tab_overlay.tab_bar.profile_tab))
-            .apply_over(cx, live!{ draw_bg: { active: (profile_active_val) } });
-        self.ui.label(ids!(body.tab_overlay.tab_bar.profile_tab.tab_label))
-            .apply_over(cx, live!{ draw_text: { active: (profile_active_val) } });
+        self.ui
+            .view(ids!(body.tab_overlay.tab_bar.profile_tab))
+            .apply_over(cx, live! { draw_bg: { active: (profile_active_val) } });
+        self.ui
+            .label(ids!(body.tab_overlay.tab_bar.profile_tab.tab_label))
+            .apply_over(cx, live! { draw_text: { active: (profile_active_val) } });
 
         // Update settings tab active state
         let settings_active_val = if settings_active { 1.0 } else { 0.0 };
-        self.ui.view(ids!(body.tab_overlay.tab_bar.settings_tab))
-            .apply_over(cx, live!{ draw_bg: { active: (settings_active_val) } });
-        self.ui.label(ids!(body.tab_overlay.tab_bar.settings_tab.tab_label))
-            .apply_over(cx, live!{ draw_text: { active: (settings_active_val) } });
+        self.ui
+            .view(ids!(body.tab_overlay.tab_bar.settings_tab))
+            .apply_over(cx, live! { draw_bg: { active: (settings_active_val) } });
+        self.ui
+            .label(ids!(body.tab_overlay.tab_bar.settings_tab.tab_label))
+            .apply_over(cx, live! { draw_text: { active: (settings_active_val) } });
 
         // Hide all content pages first
-        self.ui.view(ids!(body.tab_overlay.tab_content.profile_page)).set_visible(cx, false);
-        self.ui.view(ids!(body.tab_overlay.tab_content.settings_tab_page)).set_visible(cx, false);
+        self.ui
+            .view(ids!(body.tab_overlay.tab_content.profile_page))
+            .set_visible(cx, false);
+        self.ui
+            .view(ids!(body.tab_overlay.tab_content.settings_tab_page))
+            .set_visible(cx, false);
 
         // Show active tab content
         match self.active_tab {
             Some(TabId::Profile) => {
-                self.ui.view(ids!(body.tab_overlay.tab_content.profile_page)).set_visible(cx, true);
+                self.ui
+                    .view(ids!(body.tab_overlay.tab_content.profile_page))
+                    .set_visible(cx, true);
             }
             Some(TabId::Settings) => {
-                self.ui.view(ids!(body.tab_overlay.tab_content.settings_tab_page)).set_visible(cx, true);
+                self.ui
+                    .view(ids!(body.tab_overlay.tab_content.settings_tab_page))
+                    .set_visible(cx, true);
             }
             None => {
                 if profile_open {
-                    self.ui.view(ids!(body.tab_overlay.tab_content.profile_page)).set_visible(cx, true);
+                    self.ui
+                        .view(ids!(body.tab_overlay.tab_content.profile_page))
+                        .set_visible(cx, true);
                 } else if settings_open {
-                    self.ui.view(ids!(body.tab_overlay.tab_content.settings_tab_page)).set_visible(cx, true);
+                    self.ui
+                        .view(ids!(body.tab_overlay.tab_content.settings_tab_page))
+                        .set_visible(cx, true);
                 }
             }
         }
@@ -1591,20 +2077,82 @@ impl App {
 impl App {
     /// Handle MofaHero start/stop button clicks
     fn handle_mofa_hero_buttons(&mut self, cx: &mut Cx, event: &Event) {
-        let start_view = self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.fm_page.mofa_hero.action_section.start_view));
+        let start_view = self.ui.view(ids!(
+            body.dashboard_base
+                .content_area
+                .main_content
+                .content
+                .fm_page
+                .mofa_hero
+                .action_section
+                .start_view
+        ));
         match event.hits(cx, start_view.area()) {
             Hit::FingerUp(_) => {
-                self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.fm_page.mofa_hero.action_section.start_view)).set_visible(cx, false);
-                self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.fm_page.mofa_hero.action_section.stop_view)).set_visible(cx, true);
+                self.ui
+                    .view(ids!(
+                        body.dashboard_base
+                            .content_area
+                            .main_content
+                            .content
+                            .fm_page
+                            .mofa_hero
+                            .action_section
+                            .start_view
+                    ))
+                    .set_visible(cx, false);
+                self.ui
+                    .view(ids!(
+                        body.dashboard_base
+                            .content_area
+                            .main_content
+                            .content
+                            .fm_page
+                            .mofa_hero
+                            .action_section
+                            .stop_view
+                    ))
+                    .set_visible(cx, true);
                 self.ui.redraw(cx);
             }
             _ => {}
         }
-        let stop_view = self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.fm_page.mofa_hero.action_section.stop_view));
+        let stop_view = self.ui.view(ids!(
+            body.dashboard_base
+                .content_area
+                .main_content
+                .content
+                .fm_page
+                .mofa_hero
+                .action_section
+                .stop_view
+        ));
         match event.hits(cx, stop_view.area()) {
             Hit::FingerUp(_) => {
-                self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.fm_page.mofa_hero.action_section.start_view)).set_visible(cx, true);
-                self.ui.view(ids!(body.dashboard_base.content_area.main_content.content.fm_page.mofa_hero.action_section.stop_view)).set_visible(cx, false);
+                self.ui
+                    .view(ids!(
+                        body.dashboard_base
+                            .content_area
+                            .main_content
+                            .content
+                            .fm_page
+                            .mofa_hero
+                            .action_section
+                            .start_view
+                    ))
+                    .set_visible(cx, true);
+                self.ui
+                    .view(ids!(
+                        body.dashboard_base
+                            .content_area
+                            .main_content
+                            .content
+                            .fm_page
+                            .mofa_hero
+                            .action_section
+                            .stop_view
+                    ))
+                    .set_visible(cx, false);
                 self.ui.redraw(cx);
             }
             _ => {}

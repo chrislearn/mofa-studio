@@ -257,7 +257,7 @@ live_design! {
                 cursor: Hand
 
                 action_start_label = <StatusLabel> {
-                    text: "Start MoFA"
+                    text: "Start Colang"
                 }
 
                 start_btn = <View> {

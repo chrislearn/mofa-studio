@@ -189,6 +189,13 @@ live_design! {
         }
 
         // Navigation buttons
+        colang_tab = <SidebarMenuButton> {
+            text: "Colang"
+            draw_icon: {
+                svg_file: dep("crate://self/resources/icons/colang.svg")
+            }
+        }
+
         mofa_fm_tab = <SidebarMenuButton> {
             text: "MoFA FM"
             draw_icon: {
@@ -274,6 +281,7 @@ live_design! {
 
 #[derive(Clone, PartialEq)]
 pub enum SidebarSelection {
+    Colang,
     MofaFM,
     App(usize),  // 1-20
     Settings,
@@ -347,6 +355,11 @@ impl Widget for Sidebar {
             self.view.redraw(cx);
         }
 
+        // Handle Colang tab click
+        if self.view.button(ids!(colang_tab)).clicked(actions) {
+            self.handle_selection(cx, SidebarSelection::Colang);
+        }
+
         // Handle MoFA FM tab click
         if self.view.button(ids!(mofa_fm_tab)).clicked(actions) {
             self.handle_selection(cx, SidebarSelection::MofaFM);
@@ -418,6 +431,12 @@ impl Sidebar {
 
         // Apply selected state based on what was clicked
         match &selection {
+            SidebarSelection::Colang => {
+                self.view.button(ids!(colang_tab)).apply_over(cx, live!{ draw_bg: { selected: 1.0 } });
+                // Hide pinned app when Colang is selected
+                self.pinned_app_name = None;
+                self.view.button(ids!(apps_wrapper.apps_scroll.pinned_app_btn)).set_visible(cx, false);
+            }
             SidebarSelection::MofaFM => {
                 self.view.button(ids!(mofa_fm_tab)).apply_over(cx, live!{ draw_bg: { selected: 1.0 } });
                 // Hide pinned app when MoFA FM is selected
@@ -463,6 +482,7 @@ impl Sidebar {
 
         // Clear MoFA FM, Settings, and pinned app
         clear_selection!(self, cx,
+            ids!(colang_tab),
             ids!(mofa_fm_tab),
             ids!(settings_tab),
             ids!(apps_wrapper.apps_scroll.pinned_app_btn)
@@ -574,6 +594,9 @@ impl SidebarRef {
             // Then restore based on current selection
             if let Some(selection) = inner.selection.clone() {
                 match selection {
+                    SidebarSelection::Colang => {
+                        inner.view.button(ids!(colang_tab)).apply_over(cx, live!{ draw_bg: { selected: 1.0 } });
+                    }
                     SidebarSelection::MofaFM => {
                         inner.view.button(ids!(mofa_fm_tab)).apply_over(cx, live!{ draw_bg: { selected: 1.0 } });
                     }
@@ -605,6 +628,12 @@ impl SidebarRef {
             // Sidebar background
             inner.view.apply_over(cx, live!{
                 draw_bg: { dark_mode: (dark_mode) }
+            });
+
+            // Colang
+            inner.view.button(ids!(colang_tab)).apply_over(cx, live!{
+                draw_bg: { dark_mode: (dark_mode) }
+                draw_text: { dark_mode: (dark_mode) }
             });
 
             // MoFA FM tab
