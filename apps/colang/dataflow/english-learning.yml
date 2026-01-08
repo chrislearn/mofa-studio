@@ -35,6 +35,23 @@ nodes:
       DOUBAO_MODEL: doubao-pro-32k
       LOG_LEVEL: INFO
 
+  # ============ Session Context Management ============
+  
+  # Manages session context - ensures AI only responds to user input
+  # Topic is stored but does NOT trigger AI response
+  - id: session-context
+    build: cargo build --manifest-path ../../../node-hub/dora-session-context/Cargo.toml
+    path: ../../../node-hub/dora-session-context/target/release/dora-session-context
+    inputs:
+      topic: topic-generator/topic  # Receives topic but doesn't forward it
+      user_text: doubao-asr/text    # Only forwards when user speaks
+      reset: session-controller/control
+    outputs:
+      - chat_input  # Combined input sent to AI only when user speaks
+      - status
+    env:
+      LOG_LEVEL: INFO
+
   # ============ Audio Processing (Doubao APIs) ============
 
   # Speech Recognition using Doubao ASR
@@ -73,14 +90,15 @@ nodes:
   # ============ AI Conversation ============
 
   # Chat completion using Doubao (豆包) API
+  # IMPORTANT: Only receives input from session-context which ensures
+  # AI only responds when user actually speaks, not when topic arrives
   - id: ai-chat
     build: cargo build --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
     path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
     inputs:
       text: 
-        source: doubao-asr/text
+        source: session-context/chat_input  # Gated input - only when user speaks
         queue_size: 1000
-      topic: topic-generator/topic
       control: session-controller/chat_control
     outputs:
       - response

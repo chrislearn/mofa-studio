@@ -42,6 +42,7 @@ Write-Host ""
 $nodes = @(
     @{Name="Word Selector"; Path="node-hub\dora-word-selector"},
     @{Name="Topic Generator"; Path="node-hub\dora-topic-generator"},
+    @{Name="Session Context"; Path="node-hub\dora-session-context"},
     @{Name="Doubao ASR"; Path="node-hub\dora-doubao-asr"},
     @{Name="Doubao TTS"; Path="node-hub\dora-doubao-tts"},
     @{Name="Conversation Analyzer"; Path="node-hub\dora-conversation-analyzer"}
