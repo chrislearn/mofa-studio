@@ -50,8 +50,10 @@ pub enum DoraCommand {
     StopDataflowWithGrace { grace_seconds: u64 },
     /// Force stop the dataflow immediately (0s grace period)
     ForceStopDataflow,
-    /// Send a prompt to LLM
-    SendPrompt { message: String },
+    /// Send text input to text-input node
+    SendText { message: String },
+    /// Send audio data to audio-input node (f32 samples, -1.0 to 1.0)
+    SendAudio { data: Vec<f32>, sample_rate: u32 },
     /// Send a control command
     SendControl { command: String },
     /// Update buffer status
@@ -164,11 +166,16 @@ impl DoraIntegration {
         self.send_command(DoraCommand::ForceStopDataflow)
     }
 
-    /// Send a prompt to LLM
-    pub fn send_prompt(&self, message: impl Into<String>) -> bool {
-        self.send_command(DoraCommand::SendPrompt {
+    /// Send text input to the dataflow
+    pub fn send_text(&self, message: impl Into<String>) -> bool {
+        self.send_command(DoraCommand::SendText {
             message: message.into(),
         })
+    }
+
+    /// Send audio data to the dataflow (f32 samples, -1.0 to 1.0)
+    pub fn send_audio(&self, data: Vec<f32>, sample_rate: u32) -> bool {
+        self.send_command(DoraCommand::SendAudio { data, sample_rate })
     }
 
     /// Send a control command (e.g., "reset", "cancel")
@@ -299,29 +306,49 @@ impl DoraIntegration {
                         let _ = event_tx.send(DoraEvent::DataflowStopped);
                     }
 
-                    DoraCommand::SendPrompt { message } => {
+                    DoraCommand::SendText { message } => {
                         if let Some(ref disp) = dispatcher {
-                            if let Some(bridge) = disp.get_bridge("mofa-prompt-input") {
-                                log::info!("Sending prompt via bridge: {}", message);
-                                if let Err(e) = bridge.send("prompt", mofa_dora_bridge::DoraData::Text(message.clone())) {
-                                    log::error!("Failed to send prompt: {}", e);
+                            if let Some(bridge) = disp.get_bridge("mofa-text-input") {
+                                log::info!("Sending text via bridge: {}", message);
+                                if let Err(e) = bridge.send("text", mofa_dora_bridge::DoraData::Text(message.clone())) {
+                                    log::error!("Failed to send text: {}", e);
                                 }
                             } else {
-                                log::warn!("mofa-prompt-input bridge not found");
+                                log::warn!("mofa-text-input bridge not found");
+                            }
+                        }
+                    }
+
+                    DoraCommand::SendAudio { data, sample_rate } => {
+                        if let Some(ref disp) = dispatcher {
+                            if let Some(bridge) = disp.get_bridge("mofa-audio-input") {
+                                log::debug!("Sending audio via bridge: {} samples, {}Hz", data.len(), sample_rate);
+                                let audio_data = mofa_dora_bridge::data::AudioData {
+                                    samples: data,
+                                    sample_rate,
+                                    channels: 1,
+                                    participant_id: None,
+                                    question_id: None,
+                                };
+                                if let Err(e) = bridge.send("audio", mofa_dora_bridge::DoraData::Audio(audio_data)) {
+                                    log::error!("Failed to send audio: {}", e);
+                                }
+                            } else {
+                                log::warn!("mofa-audio-input bridge not found");
                             }
                         }
                     }
 
                     DoraCommand::SendControl { command } => {
                         if let Some(ref disp) = dispatcher {
-                            if let Some(bridge) = disp.get_bridge("mofa-prompt-input") {
+                            if let Some(bridge) = disp.get_bridge("mofa-text-input") {
                                 log::info!("Sending control command: {}", command);
                                 let ctrl = mofa_dora_bridge::ControlCommand::new(&command);
                                 if let Err(e) = bridge.send("control", mofa_dora_bridge::DoraData::Control(ctrl)) {
                                     log::error!("Failed to send control: {}", e);
                                 }
                             } else {
-                                log::warn!("mofa-prompt-input bridge not found for control");
+                                log::warn!("mofa-text-input bridge not found for control");
                             }
                         }
                     }
@@ -388,7 +415,8 @@ impl DoraIntegration {
                             match node_id.as_str() {
                                 "mofa-audio-player" => state.write().audio_player_connected = true,
                                 "mofa-system-log" => state.write().system_log_connected = true,
-                                "mofa-prompt-input" => state.write().prompt_input_connected = true,
+                                "mofa-text-input" => state.write().prompt_input_connected = true,
+                                "mofa-audio-input" => { /* audio input connected */ }
                                 _ => {}
                             }
                         }
@@ -400,7 +428,8 @@ impl DoraIntegration {
                             match node_id.as_str() {
                                 "mofa-audio-player" => state.write().audio_player_connected = false,
                                 "mofa-system-log" => state.write().system_log_connected = false,
-                                "mofa-prompt-input" => state.write().prompt_input_connected = false,
+                                "mofa-text-input" => state.write().prompt_input_connected = false,
+                                "mofa-audio-input" => { /* audio input disconnected */ }
                                 _ => {}
                             }
                         }

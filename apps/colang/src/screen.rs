@@ -1143,6 +1143,11 @@ pub struct ColangScreen {
     // Participant audio levels for decay animation (matches conference-dashboard)
     #[rust]
     participant_levels: [f64; 2],  // 0=myself, 1=teacher
+    // Silence detection for auto-send (track when user stops talking)
+    #[rust]
+    silence_start_time: Option<std::time::Instant>,
+    #[rust]
+    user_was_speaking: bool,  // Track if user has started speaking in current input session
 }
 
 impl Widget for ColangScreen {
@@ -1170,6 +1175,8 @@ impl Widget for ColangScreen {
                     dora.send_command(DoraCommand::UpdateBufferStatus { fill_percentage });
                 }
             }
+            // Silence detection: auto-send after 3 seconds of silence
+            self.check_silence_and_auto_send(cx);
         }
 
         // Handle dora timer for polling dora events

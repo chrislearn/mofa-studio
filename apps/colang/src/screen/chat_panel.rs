@@ -35,11 +35,11 @@ impl ColangScreen {
         // Send through dora if connected
         if let Some(ref dora) = self.dora_integration {
             if dora.is_running() {
-                dora.send_prompt(&prompt_text);
-                self.add_log(cx, &format!("[INFO] [App] Sent prompt: {}",
+                dora.send_text(&prompt_text);
+                self.add_log(cx, &format!("[INFO] [App] Sent text: {}",
                     if prompt_text.len() > 50 { format!("{}...", &prompt_text[..50]) } else { prompt_text.to_string() }));
             } else {
-                self.add_log(cx, "[WARN] [App] Dataflow not running - prompt not sent to LLM");
+                self.add_log(cx, "[WARN] [App] Dataflow not running - text not sent to LLM");
             }
         }
 

@@ -149,4 +149,67 @@ impl ColangScreen {
             audio_manager.set_output_device(device_name);
         }
     }
+
+    /// Check for silence and auto-send after 3 seconds
+    /// This detects when user stops speaking and automatically sends the input
+    pub(super) fn check_silence_and_auto_send(&mut self, cx: &mut Cx) {
+        use std::time::{Duration, Instant};
+
+        // Silence threshold: mic level below this is considered silence
+        const SILENCE_THRESHOLD: f32 = 0.05;
+        // Speech threshold: mic level above this means user is speaking
+        const SPEECH_THRESHOLD: f32 = 0.08;
+        // Auto-send after this duration of silence (if user was speaking)
+        const SILENCE_DURATION: Duration = Duration::from_secs(3);
+
+        let mic_level = if let Some(ref audio_manager) = self.audio_manager {
+            audio_manager.get_mic_level()
+        } else {
+            return;
+        };
+
+        // Track if user is currently speaking
+        if mic_level > SPEECH_THRESHOLD {
+            // User is speaking - reset silence timer and mark that they started speaking
+            self.silence_start_time = None;
+            self.user_was_speaking = true;
+        } else if mic_level < SILENCE_THRESHOLD {
+            // Mic is silent
+            if self.user_was_speaking {
+                // User was speaking but now silent - start or check silence timer
+                let now = Instant::now();
+
+                if let Some(silence_start) = self.silence_start_time {
+                    // Check if we've been silent for 3 seconds
+                    if now.duration_since(silence_start) >= SILENCE_DURATION {
+                        // Auto-send! User stopped speaking for 3 seconds
+                        self.auto_send_on_silence(cx);
+                        // Reset state
+                        self.silence_start_time = None;
+                        self.user_was_speaking = false;
+                    }
+                } else {
+                    // Start tracking silence
+                    self.silence_start_time = Some(now);
+                }
+            }
+        }
+        // Note: If mic_level is between thresholds, we keep current state (hysteresis)
+    }
+
+    /// Called when silence is detected - sends current input automatically
+    fn auto_send_on_silence(&mut self, cx: &mut Cx) {
+        // Check if there's text to send
+        let input_text = self.view.text_input(ids!(left_column.prompt_container.prompt_section.prompt_row.prompt_input)).text();
+
+        if !input_text.is_empty() {
+            // Send the text input (same as pressing Send button)
+            self.add_log(cx, "[INFO] [App] Auto-sending after 3s silence detected");
+            self.send_prompt(cx);
+        } else {
+            // No text input, but we could potentially send audio data here in the future
+            // For now, just log that silence was detected
+            self.add_log(cx, "[DEBUG] [App] 3s silence detected (no text to send)");
+        }
+    }
 }
