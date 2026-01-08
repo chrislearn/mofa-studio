@@ -6,11 +6,11 @@ use makepad_widgets::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::mofa_hero::{MofaHeroWidgetExt, ConnectionStatus};
-use crate::dora_integration::{DoraIntegration, DoraEvent};
+use crate::dora_integration::{DoraEvent, DoraIntegration};
+use crate::mofa_hero::{ConnectionStatus, MofaHeroWidgetExt};
 use mofa_settings::data::Preferences;
 
-use super::{ColangScreen, ChatMessageEntry};
+use super::{ChatMessageEntry, ColangScreen};
 
 impl ColangScreen {
     // =====================================================
@@ -32,24 +32,29 @@ impl ColangScreen {
 
         // Look for default dataflow relative to current working directory
         // Check multiple possible locations
-        let dataflow_path = std::env::current_dir()
-            .ok()
-            .and_then(|cwd| {
-                // First try: apps/mofa-fm/dataflow/voice-chat.yml (when running from workspace root)
-                let app_path = cwd.join("apps").join("mofa-fm").join("dataflow").join("voice-chat.yml");
-                if app_path.exists() {
-                    return Some(app_path);
-                }
-                // Second try: dataflow/voice-chat.yml (when running from app directory)
-                let local_path = cwd.join("dataflow").join("voice-chat.yml");
-                if local_path.exists() {
-                    return Some(local_path);
-                }
-                None
-            });
+        let dataflow_path = std::env::current_dir().ok().and_then(|cwd| {
+            // First try: apps/colang/dataflow/voice-chat.yml (when running from workspace root)
+            let app_path = cwd
+                .join("apps")
+                .join("colang")
+                .join("dataflow")
+                .join("voice-chat.yml");
+            if app_path.exists() {
+                return Some(app_path);
+            }
+            // Second try: dataflow/voice-chat.yml (when running from app directory)
+            let local_path = cwd.join("dataflow").join("voice-chat.yml");
+            if local_path.exists() {
+                return Some(local_path);
+            }
+            None
+        });
         self.dataflow_path = dataflow_path;
 
-        ::log::info!("Dora integration initialized, dataflow: {:?}", self.dataflow_path);
+        ::log::info!(
+            "Dora integration initialized, dataflow: {:?}",
+            self.dataflow_path
+        );
     }
 
     /// Start a dataflow
@@ -85,31 +90,52 @@ impl ColangScreen {
         let events = if let Some(ref dora) = self.dora_integration {
             dora.poll_events()
         } else {
-            Vec::new()  // Continue to update audio visualization even without dora
+            Vec::new() // Continue to update audio visualization even without dora
         };
 
         for event in events {
             match event {
                 DoraEvent::DataflowStarted { dataflow_id } => {
                     ::log::info!("Dataflow started: {}", dataflow_id);
-                    self.add_log(cx, &format!("[INFO] [App] Dataflow started: {}", dataflow_id));
-                    self.view.mofa_hero(ids!(left_column.mofa_hero)).set_connection_status(cx, ConnectionStatus::Connected);
+                    self.add_log(
+                        cx,
+                        &format!("[INFO] [App] Dataflow started: {}", dataflow_id),
+                    );
+                    self.view
+                        .mofa_hero(ids!(left_column.mofa_hero))
+                        .set_connection_status(cx, ConnectionStatus::Connected);
                 }
                 DoraEvent::DataflowStopped => {
                     ::log::info!("Dataflow stopped");
                     self.add_log(cx, "[INFO] [App] Dataflow stopped");
-                    self.view.mofa_hero(ids!(left_column.mofa_hero)).set_running(cx, false);
-                    self.view.mofa_hero(ids!(left_column.mofa_hero)).set_connection_status(cx, ConnectionStatus::Stopped);
+                    self.view
+                        .mofa_hero(ids!(left_column.mofa_hero))
+                        .set_running(cx, false);
+                    self.view
+                        .mofa_hero(ids!(left_column.mofa_hero))
+                        .set_connection_status(cx, ConnectionStatus::Stopped);
                 }
                 DoraEvent::BridgeConnected { bridge_name } => {
                     ::log::info!("Bridge connected: {}", bridge_name);
                     let display_name = Self::format_bridge_name(&bridge_name);
-                    self.add_log(cx, &format!("[INFO] [Bridge] {} connected to dora dataflow", display_name));
+                    self.add_log(
+                        cx,
+                        &format!(
+                            "[INFO] [Bridge] {} connected to dora dataflow",
+                            display_name
+                        ),
+                    );
                 }
                 DoraEvent::BridgeDisconnected { bridge_name } => {
                     ::log::info!("Bridge disconnected: {}", bridge_name);
                     let display_name = Self::format_bridge_name(&bridge_name);
-                    self.add_log(cx, &format!("[WARN] [Bridge] {} disconnected from dora dataflow", display_name));
+                    self.add_log(
+                        cx,
+                        &format!(
+                            "[WARN] [Bridge] {} disconnected from dora dataflow",
+                            display_name
+                        ),
+                    );
                 }
                 DoraEvent::ChatReceived { message } => {
                     // Handle streaming message consolidation
@@ -177,11 +203,17 @@ impl ColangScreen {
 
                         // Remove from pending - match by sender AND session_id
                         self.pending_streaming_messages.retain(|m| {
-                            !(m.sender == sender && (
-                                m.session_id == session_id ||
-                                (m.session_id.as_ref().map(|s| s == "unknown").unwrap_or(true)
-                                    && session_id.as_ref().map(|s| s == "unknown").unwrap_or(true))
-                            ))
+                            !(m.sender == sender
+                                && (m.session_id == session_id
+                                    || (m
+                                        .session_id
+                                        .as_ref()
+                                        .map(|s| s == "unknown")
+                                        .unwrap_or(true)
+                                        && session_id
+                                            .as_ref()
+                                            .map(|s| s == "unknown")
+                                            .unwrap_or(true))))
                         });
 
                         // Add to finalized messages
@@ -213,7 +245,9 @@ impl ColangScreen {
                 DoraEvent::Error { message } => {
                     ::log::error!("Dora error: {}", message);
                     self.add_log(cx, &format!("[ERROR] [Dora] {}", message));
-                    self.view.mofa_hero(ids!(left_column.mofa_hero)).set_connection_status(cx, ConnectionStatus::Failed);
+                    self.view
+                        .mofa_hero(ids!(left_column.mofa_hero))
+                        .set_connection_status(cx, ConnectionStatus::Failed);
                 }
             }
         }
@@ -221,8 +255,14 @@ impl ColangScreen {
         // Update audio buffer level in mofa_hero (from audio player)
         let (is_playing, active_idx, waveform_data) = if let Some(ref player) = self.audio_player {
             let buffer_pct = player.buffer_fill_percentage() / 100.0;
-            self.view.mofa_hero(ids!(left_column.mofa_hero)).set_buffer_level(cx, buffer_pct);
-            (player.is_playing(), player.current_participant_idx(), player.get_waveform_data())
+            self.view
+                .mofa_hero(ids!(left_column.mofa_hero))
+                .set_buffer_level(cx, buffer_pct);
+            (
+                player.is_playing(),
+                player.current_participant_idx(),
+                player.get_waveform_data(),
+            )
         } else {
             (false, None, Vec::new())
         };
@@ -235,7 +275,10 @@ impl ColangScreen {
                 let samples = &waveform_data;
                 let band_size = samples.len() / 8;
                 let mut levels = [0.0f32; 8];
-                let peak = samples.iter().map(|s| s.abs()).fold(0.0f32, |a, b| a.max(b));
+                let peak = samples
+                    .iter()
+                    .map(|s| s.abs())
+                    .fold(0.0f32, |a, b| a.max(b));
                 let norm_factor = if peak > 0.01 { 1.0 / peak } else { 1.0 };
 
                 for i in 0..8 {
@@ -252,8 +295,18 @@ impl ColangScreen {
 
             // Update participant panels using direct apply_over (exactly like conference-dashboard)
             let panel_ids: [&[LiveId]; _] = [
-                ids!(left_column.participant_container.participant_bar.myself_panel),
-                ids!(left_column.participant_container.participant_bar.teacher_panel),
+                ids!(
+                    left_column
+                        .participant_container
+                        .participant_bar
+                        .myself_panel
+                ),
+                ids!(
+                    left_column
+                        .participant_container
+                        .participant_bar
+                        .teacher_panel
+                ),
             ];
 
             for (i, panel_id) in panel_ids.into_iter().enumerate() {
@@ -340,44 +393,56 @@ impl ColangScreen {
         // Log which keys are available
         let has_openai = env_vars.contains_key("OPENAI_API_KEY");
         let has_deepseek = env_vars.contains_key("DEEPSEEK_API_KEY");
-        self.add_log(cx, &format!("[INFO] [App] API Keys: OpenAI={}, DeepSeek={}",
-            if has_openai { "✓" } else { "✗" },
-            if has_deepseek { "✓" } else { "✗" }
-        ));
+        self.add_log(
+            cx,
+            &format!(
+                "[INFO] [App] API Keys: OpenAI={}, DeepSeek={}",
+                if has_openai { "✓" } else { "✗" },
+                if has_deepseek { "✓" } else { "✗" }
+            ),
+        );
 
         // Find the dataflow file relative to current working directory
-        let dataflow_path = self.dataflow_path.clone().unwrap_or_else(|| {
-            let cwd = std::env::current_dir().unwrap_or_default();
-            // First try: apps/mofa-fm/dataflow/voice-chat.yml (when running from workspace root)
-            let app_path = cwd.join("apps").join("mofa-fm").join("dataflow").join("voice-chat.yml");
-            if app_path.exists() {
-                return app_path;
-            }
-            // Fallback: dataflow/voice-chat.yml (when running from app directory)
-            cwd.join("dataflow").join("voice-chat.yml")
-        });
+        let Some(dataflow_path) = self.dataflow_path.clone() else {
+            self.add_log(cx, &format!("[ERROR] [App] Dataflow path not set"));
+            return;
+        };
 
         if !dataflow_path.exists() {
-            self.add_log(cx, &format!("[ERROR] [App] Dataflow not found: {:?}", dataflow_path));
-            self.view.mofa_hero(ids!(left_column.mofa_hero)).set_connection_status(cx, ConnectionStatus::Failed);
+            self.add_log(
+                cx,
+                &format!("[ERROR] [App] Dataflow not found: {:?}", dataflow_path),
+            );
+            self.view
+                .mofa_hero(ids!(left_column.mofa_hero))
+                .set_connection_status(cx, ConnectionStatus::Failed);
             return;
         }
 
-        self.add_log(cx, &format!("[INFO] [App] Starting dataflow: {:?}", dataflow_path));
+        self.add_log(
+            cx,
+            &format!("[INFO] [App] Starting dataflow: {:?}", dataflow_path),
+        );
 
         // Update UI state - show connecting
-        self.view.mofa_hero(ids!(left_column.mofa_hero)).set_running(cx, true);
-        self.view.mofa_hero(ids!(left_column.mofa_hero)).set_connection_status(cx, ConnectionStatus::Connecting);
+        self.view
+            .mofa_hero(ids!(left_column.mofa_hero))
+            .set_running(cx, true);
+        self.view
+            .mofa_hero(ids!(left_column.mofa_hero))
+            .set_connection_status(cx, ConnectionStatus::Connecting);
 
         // Start dataflow with environment variables
         if let Some(ref dora) = self.dora_integration {
             if !dora.start_dataflow_with_env(&dataflow_path, env_vars) {
                 self.add_log(cx, "[ERROR] [App] Failed to send start command");
-                self.view.mofa_hero(ids!(left_column.mofa_hero)).set_connection_status(cx, ConnectionStatus::Failed);
+                self.view
+                    .mofa_hero(ids!(left_column.mofa_hero))
+                    .set_connection_status(cx, ConnectionStatus::Failed);
             }
         }
 
-        self.dataflow_path = Some(dataflow_path);
+        // self.dataflow_path = Some(dataflow_path);
     }
 
     /// Handle MoFA stop button click
@@ -387,7 +452,9 @@ impl ColangScreen {
         self.add_log(cx, "[INFO] [App] Force stopping Colang dataflow...");
 
         // Show "Stopping" state while stop is in progress
-        self.view.mofa_hero(ids!(left_column.mofa_hero)).set_connection_status(cx, ConnectionStatus::Stopping);
+        self.view
+            .mofa_hero(ids!(left_column.mofa_hero))
+            .set_connection_status(cx, ConnectionStatus::Stopping);
 
         // Force stop dataflow immediately (0s grace period)
         // The actual status update will come from DoraEvent::DataflowStopped
