@@ -61,7 +61,7 @@ live_design! {
         }
     }
 
-    // MoFA FM Screen - adaptive horizontal layout with left content and right log panel
+    // Colang Screen - adaptive horizontal layout with left content and right log panel
     pub ColangScreen = {{ColangScreen}} {
         width: Fill, height: Fill
         flow: Right
@@ -599,7 +599,7 @@ live_design! {
                         prompt_input = <TextInput> {
                             width: Fill, height: Fit
                             padding: {left: 12, right: 12, top: 10, bottom: 10}
-                            empty_text: "Enter prompt to send..."
+                            empty_text: "Enter message to send..."
                             draw_bg: {
                                 instance dark_mode: 0.0
                                 border_radius: 4.0

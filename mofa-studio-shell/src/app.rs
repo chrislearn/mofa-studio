@@ -71,8 +71,8 @@ live_design! {
     use mofa_widgets::theme::INDIGO_100;
 
     use mofa_studio_shell::widgets::sidebar::Sidebar;
-    use mofa_fm::screen::MoFaFMScreen;
     use colang::screen::ColangScreen;
+    use mofa_fm::screen::MoFaFMScreen;
     use mofa_settings::screen::SettingsScreen;
 
     // Logo image
@@ -437,14 +437,14 @@ live_design! {
                         width: Fill, height: Fill
                         flow: Overlay
 
-                        fm_page = <MoFaFMScreen> {
+                        colang_page = <ColangScreen> {
                             width: Fill, height: Fill
                             visible: true
                         }
 
-                        colang_page = <ColangScreen> {
+                        fm_page = <MoFaFMScreen> {
                             width: Fill, height: Fill
-                            visible: true
+                            visible: false
                         }
 
                         app_page = <View> {
