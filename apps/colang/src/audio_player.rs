@@ -343,23 +343,63 @@ fn run_audio_thread(
         device.name().unwrap_or_default()
     );
 
+    // Get device's default configuration and adapt it
+    let mut supported_config = device
+        .default_output_config()
+        .map_err(|e| format!("Failed to get default config: {}", e))?;
+    
+    // Try to use our preferred sample rate if supported, otherwise use device's default
+    let actual_sample_rate = if supported_config.sample_rate().0 != sample_rate {
+        log::warn!(
+            "Device sample rate {} differs from requested {}, using device rate",
+            supported_config.sample_rate().0,
+            sample_rate
+        );
+        supported_config.sample_rate().0
+    } else {
+        sample_rate
+    };
+
     let config = cpal::StreamConfig {
-        channels: 1,
-        sample_rate: cpal::SampleRate(sample_rate),
+        channels: supported_config.channels(),
+        sample_rate: cpal::SampleRate(actual_sample_rate),
         buffer_size: cpal::BufferSize::Default,
     };
+    
+    log::info!(
+        "Using audio config: {} channels, {} Hz",
+        config.channels,
+        config.sample_rate.0
+    );
 
     let buffer_clone = Arc::clone(&buffer);
     let is_playing_clone = Arc::clone(&is_playing);
     let state_for_callback = Arc::clone(&state);
 
+    let channels = config.channels as usize;
     let stream = device
         .build_output_stream(
             &config,
             move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                 if is_playing_clone.load(Ordering::Relaxed) {
                     let mut buf = buffer_clone.lock();
-                    buf.read(data);
+                    
+                    // Read mono data and duplicate to all channels if needed
+                    if channels == 1 {
+                        buf.read(data);
+                    } else {
+                        // Read into temporary buffer and duplicate to all channels
+                        let frame_count = data.len() / channels;
+                        let mut mono_data = vec![0.0f32; frame_count];
+                        buf.read(&mut mono_data);
+                        
+                        for (i, &sample) in mono_data.iter().enumerate() {
+                            for ch in 0..channels {
+                                data[i * channels + ch] = sample;
+                            }
+                        }
+                    }
+                    
                     let current_participant = buf.current_participant();
                     drop(buf);
 
