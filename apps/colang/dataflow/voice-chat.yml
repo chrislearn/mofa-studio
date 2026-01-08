@@ -12,35 +12,35 @@
 nodes:
   # ============ Study Participants (MaaS) ============
 
-  - id: student1
+  - id: myself
     build: cargo build --release --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
     path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
     inputs:
-      text: bridge-to-student1/text
+      text: bridge-to-myself/text
       control: conference-controller/llm_control
     outputs:
       - text
       - status
       - log
     env:
-      MAAS_CONFIG_PATH: study_config_student1.toml
+      MAAS_CONFIG_PATH: study_config_myself.toml
       ALIBABA_CLOUD_API_KEY: ${ALIBABA_CLOUD_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       LOG_LEVEL: INFO
 
-  - id: student2
+  - id: techer
     build: cargo build --release --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
     path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
     inputs:
-      text: bridge-to-student2/text
+      text: bridge-to-techer/text
       control: conference-controller/llm_control
     outputs:
       - text
       - status
       - log
     env:
-      MAAS_CONFIG_PATH: study_config_student2.toml
+      MAAS_CONFIG_PATH: study_config_techer.toml
       ALIBABA_CLOUD_API_KEY: ${ALIBABA_CLOUD_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
@@ -71,11 +71,11 @@ nodes:
     path: dora-text-segmenter
     inputs:
       # Participant inputs - output names are derived from these input port names
-      student1:
-        source: student1/text
+      myself:
+        source: myself/text
         queue_size: 1000
-      student2:
-        source: student2/text
+      techer:
+        source: techer/text
         queue_size: 1000
       tutor:
         source: tutor/text
@@ -96,8 +96,8 @@ nodes:
       reset: conference-controller/control_judge
 
     outputs:
-      - text_segment_student1
-      - text_segment_student2
+      - text_segment_myself
+      - text_segment_techer
       - text_segment_tutor
       - status
       - metrics
@@ -115,11 +115,11 @@ nodes:
       AUDIO_BUFFER_HIGH_WATER_MARK: 60
 
   # PrimeSpeech TTS for Student1 (Zhao Daniu - Male, Rational Voice)
-  - id: primespeech-student1
+  - id: primespeech-myself
     build: pip install -e ../../../libs/dora-common -e ../../../node-hub/dora-primespeech
     path: dora-primespeech
     inputs:
-      text: multi-text-segmenter/text_segment_student1
+      text: multi-text-segmenter/text_segment_myself
     outputs:
       - audio
       - status
@@ -146,11 +146,11 @@ nodes:
       TTS_MIN_SEGMENT_LENGTH: 20
 
   # PrimeSpeech TTS for Student2 (Chen Yifan - Female, Emotional Voice)
-  - id: primespeech-student2
+  - id: primespeech-techer
     build: pip install -e ../../../libs/dora-common -e ../../../node-hub/dora-primespeech
     path: dora-primespeech
     inputs:
-      text: multi-text-segmenter/text_segment_student2
+      text: multi-text-segmenter/text_segment_techer
     outputs:
       - audio
       - status
@@ -210,17 +210,17 @@ nodes:
   # ============ 3 Conference Bridges (Switch) ============
 
   # Bridge 1: Student2 + Tutor → Student1
-  - id: bridge-to-student1
+  - id: bridge-to-myself
     build: cargo build --release --manifest-path ../../../node-hub/dora-conference-bridge/Cargo.toml
     path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
     env:
       LOG_LEVEL: INFO
-      STREAMING_PORTS: student1,tutor,student2
+      STREAMING_PORTS: myself,tutor,techer
       ERROR_MESSAGE_TEMPLATE: "[{participant} is experiencing technical difficulties. We will proceed without their response.]"
       DORA_STUDY_MODE: true
     inputs:
-      student2:
-        source: student2/text
+      techer:
+        source: techer/text
         queue_size: 1000
       tutor:
         source: tutor/text
@@ -234,17 +234,17 @@ nodes:
       - log
 
   # Bridge 2: Student1 + Tutor → Student2
-  - id: bridge-to-student2
+  - id: bridge-to-techer
     build: cargo build --release --manifest-path ../../../node-hub/dora-conference-bridge/Cargo.toml
     path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
     env:
       LOG_LEVEL: INFO
-      STREAMING_PORTS: student1,tutor,student2
+      STREAMING_PORTS: myself,tutor,techer
       ERROR_MESSAGE_TEMPLATE: "[{participant} is experiencing technical difficulties. We will proceed without their response.]"
       DORA_STUDY_MODE: true
     inputs:
-      student1:
-        source: student1/text
+      myself:
+        source: myself/text
         queue_size: 1000
       tutor:
         source: tutor/text
@@ -263,15 +263,15 @@ nodes:
     path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
     env:
       LOG_LEVEL: INFO
-      STREAMING_PORTS: student1,tutor,student2
+      STREAMING_PORTS: myself,tutor,techer
       ERROR_MESSAGE_TEMPLATE: "[{participant} is experiencing technical difficulties. We will proceed without their response.]"
       DORA_STUDY_MODE: true
     inputs:
-      student1:
-        source: student1/text
+      myself:
+        source: myself/text
         queue_size: 1000
-      student2:
-        source: student2/text
+      techer:
+        source: techer/text
         queue_size: 1000
       control:
         source: conference-controller/control_judge
@@ -287,16 +287,16 @@ nodes:
     build: cargo build --release --manifest-path ../../../node-hub/dora-conference-controller/Cargo.toml
     path: ../../../node-hub/dora-conference-controller/target/release/dora-conference-controller
     env:
-      DORA_POLICY_PATTERN: "[(tutor, *), (student2, 1), (student1, 2)]"
+      DORA_POLICY_PATTERN: "[(tutor, *), (techer, 1), (myself, 2)]"
       INITIAL_QUESTION_ID: 1
       AUDIO_BUFFER_THRESHOLD: 30
       AUDIO_BUFFER_RESUME_THRESHOLD: 10
     inputs:
-      student1:
-        source: student1/text
+      myself:
+        source: myself/text
         queue_size: 1000
-      student2:
-        source: student2/text
+      techer:
+        source: techer/text
         queue_size: 1000
       tutor:
         source: tutor/text
@@ -319,11 +319,11 @@ nodes:
   - id: mofa-audio-player
     path: dynamic
     inputs:
-      audio_student1:
-        source: primespeech-student1/audio
+      audio_myself:
+        source: primespeech-myself/audio
         queue_size: 1000
-      audio_student2:
-        source: primespeech-student2/audio
+      audio_techer:
+        source: primespeech-techer/audio
         queue_size: 1000
       audio_tutor:
         source: primespeech-tutor/audio
@@ -350,10 +350,10 @@ nodes:
     inputs:
       # LLM text outputs only (for chat display)
       llm1_text:
-        source: student1/text
+        source: myself/text
         queue_size: 1000
       llm2_text:
-        source: student2/text
+        source: techer/text
         queue_size: 1000
       judge_text:
         source: tutor/text
@@ -367,20 +367,20 @@ nodes:
     inputs:
       # Student1 logs
       llm1_log:
-        source: student1/log
+        source: myself/log
         queue_size: 1000
-      llm1_status: student1/status
+      llm1_status: myself/status
       llm1_text:
-        source: student1/text
+        source: myself/text
         queue_size: 1000
 
       # Student2 logs
       llm2_log:
-        source: student2/log
+        source: techer/log
         queue_size: 1000
-      llm2_status: student2/status
+      llm2_status: techer/status
       llm2_text:
-        source: student2/text
+        source: techer/text
         queue_size: 1000
 
       # Tutor logs
@@ -394,18 +394,18 @@ nodes:
 
       # Bridge logs
       bridge1_log:
-        source: bridge-to-student1/log
+        source: bridge-to-myself/log
         queue_size: 1000
-      bridge1_status: bridge-to-student1/status
+      bridge1_status: bridge-to-myself/status
       bridge1_text:
-        source: bridge-to-student1/text
+        source: bridge-to-myself/text
         queue_size: 1000
       bridge2_log:
-        source: bridge-to-student2/log
+        source: bridge-to-techer/log
         queue_size: 1000
-      bridge2_status: bridge-to-student2/status
+      bridge2_status: bridge-to-techer/status
       bridge2_text:
-        source: bridge-to-student2/text
+        source: bridge-to-techer/text
         queue_size: 1000
       bridge3_log:
         source: bridge-to-tutor/log
@@ -430,13 +430,13 @@ nodes:
         queue_size: 1000
       segmenter_status: multi-text-segmenter/status
       tts1_log:
-        source: primespeech-student1/log
+        source: primespeech-myself/log
         queue_size: 1000
-      tts1_status: primespeech-student1/status
+      tts1_status: primespeech-myself/status
       tts2_log:
-        source: primespeech-student2/log
+        source: primespeech-techer/log
         queue_size: 1000
-      tts2_status: primespeech-student2/status
+      tts2_status: primespeech-techer/status
       tts3_log:
         source: primespeech-tutor/log
         queue_size: 1000
