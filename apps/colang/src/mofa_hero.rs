@@ -285,7 +285,7 @@ live_design! {
                 cursor: Hand
 
                 action_stop_label = <StatusLabel> {
-                    text: "Stop MoFA"
+                    text: "Stop Colang"
                 }
 
                 stop_btn = <View> {

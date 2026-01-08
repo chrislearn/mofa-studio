@@ -357,11 +357,13 @@ impl Widget for Sidebar {
 
         // Handle Colang tab click
         if self.view.button(ids!(colang_tab)).clicked(actions) {
+            println!("Colang tab clicked");
             self.handle_selection(cx, SidebarSelection::Colang);
         }
 
         // Handle MoFA FM tab click
         if self.view.button(ids!(mofa_fm_tab)).clicked(actions) {
+            println!("MoFA FM tab clicked");
             self.handle_selection(cx, SidebarSelection::MofaFM);
         }
 
@@ -432,12 +434,14 @@ impl Sidebar {
         // Apply selected state based on what was clicked
         match &selection {
             SidebarSelection::Colang => {
+                println!("Colang selected");
                 self.view.button(ids!(colang_tab)).apply_over(cx, live!{ draw_bg: { selected: 1.0 } });
                 // Hide pinned app when Colang is selected
                 self.pinned_app_name = None;
                 self.view.button(ids!(apps_wrapper.apps_scroll.pinned_app_btn)).set_visible(cx, false);
             }
             SidebarSelection::MofaFM => {
+                println!("MofaFM selected");
                 self.view.button(ids!(mofa_fm_tab)).apply_over(cx, live!{ draw_bg: { selected: 1.0 } });
                 // Hide pinned app when MoFA FM is selected
                 self.pinned_app_name = None;
