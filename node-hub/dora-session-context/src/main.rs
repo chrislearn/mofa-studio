@@ -2,7 +2,7 @@
 // Manages conversation context including topic, without triggering AI responses
 // Ensures AI only responds when user actually speaks
 
-use dora_node_api::{DoraNode, Event};
+use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray}};
 use eyre::{Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -51,94 +51,101 @@ async fn main() -> Result<()> {
 
     while let Some(event) = events.recv() {
         match event {
-            Event::Input { id, data, .. } => {
+            Event::Input { id, data, metadata } => {
+                let raw_data = extract_bytes(&data);
                 match id.as_str() {
                     "topic" => {
                         // Receive topic but DON'T output anything yet
                         // Just store it for when user speaks
-                        match serde_json::from_slice::<TopicInfo>(&data) {
-                            Ok(topic_info) => {
-                                log::info!(
-                                    "Topic received for session {}: {}",
-                                    topic_info.session_id,
-                                    topic_info.topic
-                                );
-                                
-                                let mut state = state.lock().unwrap();
-                                state.current_topic = Some(topic_info);
-                                state.user_inputs_in_session = 0;
-                                
-                                // Send status but no chat input
-                                let status = json!({
-                                    "status": "topic_ready",
-                                    "message": "Waiting for user input..."
-                                });
-                                let status_json = serde_json::to_vec(&status)?;
-                                node.send_output("status", Default::default(), status_json)?;
-                            }
-                            Err(e) => {
-                                log::error!("Failed to parse topic: {}", e);
+                        if let Some(bytes) = &raw_data {
+                            match serde_json::from_slice::<TopicInfo>(bytes) {
+                                Ok(topic_info) => {
+                                    log::info!(
+                                        "Topic received for session {}: {}",
+                                        topic_info.session_id,
+                                        topic_info.topic
+                                    );
+                                    
+                                    let mut state = state.lock().unwrap();
+                                    state.current_topic = Some(topic_info);
+                                    state.user_inputs_in_session = 0;
+                                    
+                                    // Send status but no chat input
+                                    let status = json!({
+                                        "status": "topic_ready",
+                                        "message": "Waiting for user input..."
+                                    });
+                                    let status_str = serde_json::to_string(&status)?;
+                                    let status_array = StringArray::from(vec![status_str.as_str()]);
+                                    node.send_output("status".to_string().into(), metadata.parameters.clone(), status_array)?;
+                                }
+                                Err(e) => {
+                                    log::error!("Failed to parse topic: {}", e);
+                                }
                             }
                         }
                     }
-                    "user_text" => {
+                    "user_text" | "text_input" | "asr_text" => {
                         // User spoke! Now we can combine context and forward to AI
-                        match serde_json::from_slice::<UserInput>(&data) {
-                            Ok(user_input) => {
-                                if user_input.text.trim().is_empty() {
-                                    log::debug!("Ignoring empty user input");
-                                    continue;
-                                }
-                                
-                                log::info!("User input received: {}", user_input.text);
-                                
-                                let mut state = state.lock().unwrap();
-                                state.user_inputs_in_session += 1;
-                                let is_first = state.user_inputs_in_session == 1;
-                                
-                                // Get current session context
-                                let (session_id, topic, target_words) = 
-                                    if let Some(ref topic_info) = state.current_topic {
-                                        (
-                                            topic_info.session_id.clone(),
-                                            Some(topic_info.topic.clone()),
-                                            Some(topic_info.target_words.clone()),
-                                        )
-                                    } else {
-                                        (
-                                            user_input.session_id
-                                                .unwrap_or_else(|| "default".to_string()),
-                                            None,
-                                            None,
-                                        )
+                        if let Some(bytes) = &raw_data {
+                            match serde_json::from_slice::<UserInput>(bytes) {
+                                Ok(user_input) => {
+                                    if user_input.text.trim().is_empty() {
+                                        log::debug!("Ignoring empty user input");
+                                        continue;
+                                    }
+                                    
+                                    log::info!("User input received: {}", user_input.text);
+                                    
+                                    let mut state = state.lock().unwrap();
+                                    state.user_inputs_in_session += 1;
+                                    let is_first = state.user_inputs_in_session == 1;
+                                    
+                                    // Get current session context
+                                    let (session_id, topic, target_words) = 
+                                        if let Some(ref topic_info) = state.current_topic {
+                                            (
+                                                topic_info.session_id.clone(),
+                                                Some(topic_info.topic.clone()),
+                                                Some(topic_info.target_words.clone()),
+                                            )
+                                        } else {
+                                            (
+                                                user_input.session_id
+                                                    .unwrap_or_else(|| "default".to_string()),
+                                                None,
+                                                None,
+                                            )
+                                        };
+                                    
+                                    // Create contextual input
+                                    let contextual = ContextualInput {
+                                        user_text: user_input.text,
+                                        session_id: session_id.clone(),
+                                        topic: topic.clone(),
+                                        target_words: target_words.clone(),
+                                        is_first_in_session: is_first,
                                     };
-                                
-                                // Create contextual input
-                                let contextual = ContextualInput {
-                                    user_text: user_input.text,
-                                    session_id: session_id.clone(),
-                                    topic: topic.clone(),
-                                    target_words: target_words.clone(),
-                                    is_first_in_session: is_first,
-                                };
-                                
-                                // Output to AI
-                                let output_json = serde_json::to_vec(&contextual)?;
-                                node.send_output("chat_input", Default::default(), output_json)?;
-                                
-                                log::info!(
-                                    "Forwarded user input to AI (session: {}, first: {})",
-                                    session_id,
-                                    is_first
-                                );
-                                
-                                // If this is the first input, include topic in log
-                                if is_first && topic.is_some() {
-                                    log::info!("Topic for this session: {:?}", topic);
+                                    
+                                    // Output to AI
+                                    let output_str = serde_json::to_string(&contextual)?;
+                                    let output_array = StringArray::from(vec![output_str.as_str()]);
+                                    node.send_output("user_text".to_string().into(), metadata.parameters.clone(), output_array)?;
+                                    
+                                    log::info!(
+                                        "Forwarded user input to AI (session: {}, first: {})",
+                                        session_id,
+                                        is_first
+                                    );
+                                    
+                                    // If this is the first input, include topic in log
+                                    if is_first && topic.is_some() {
+                                        log::info!("Topic for this session: {:?}", topic);
+                                    }
                                 }
-                            }
-                            Err(e) => {
-                                log::error!("Failed to parse user input: {}", e);
+                                Err(e) => {
+                                    log::error!("Failed to parse user input: {}", e);
+                                }
                             }
                         }
                     }
@@ -157,7 +164,7 @@ async fn main() -> Result<()> {
             Event::InputClosed { id } => {
                 log::info!("Input {} closed", id);
             }
-            Event::Stop => {
+            Event::Stop(_) => {
                 log::info!("Received stop signal");
                 break;
             }
@@ -166,4 +173,30 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Extract bytes from ArrowData
+fn extract_bytes(data: &dora_node_api::ArrowData) -> Option<Vec<u8>> {
+    use dora_node_api::arrow::datatypes::DataType;
+    use dora_node_api::arrow::array::UInt8Array;
+    
+    let array = &data.0;
+    match array.data_type() {
+        DataType::UInt8 => {
+            let arr = array.as_any().downcast_ref::<UInt8Array>()?;
+            Some(arr.values().to_vec())
+        }
+        DataType::Utf8 => {
+            let arr = array.as_any().downcast_ref::<StringArray>()?;
+            if arr.len() > 0 {
+                Some(arr.value(0).as_bytes().to_vec())
+            } else {
+                None
+            }
+        }
+        _ => {
+            log::warn!("Unsupported data type: {:?}", array.data_type());
+            None
+        }
+    }
 }

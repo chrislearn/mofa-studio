@@ -1,11 +1,12 @@
 // Dora Node: Doubao ASR (Automatic Speech Recognition)
 // Converts user audio to text using Doubao Volcanic Engine API
 
-use dora_node_api::{DoraNode, Event};
+use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}};
 use eyre::{Context, Result};
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use base64::Engine;
 use sqlx::sqlite::SqlitePool;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -60,12 +61,15 @@ async fn main() -> Result<()> {
 
     while let Some(event) = events.recv() {
         match event {
-            Event::Input { id, data, .. } => {
+            Event::Input { id, data, metadata } => {
                 match id.as_str() {
                     "audio" => {
-                        log::debug!("Received audio input ({} bytes)", data.len());
+                        // Extract raw bytes from arrow data
+                        let raw_data: Vec<u8> = extract_bytes(&data)
+                            .ok_or_else(|| eyre::eyre!("Failed to get bytes from arrow data"))?;
+                        log::debug!("Received audio input ({} bytes)", raw_data.len());
                         
-                        match serde_json::from_slice::<AudioInput>(&data) {
+                        match serde_json::from_slice::<AudioInput>(&raw_data) {
                             Ok(input) => {
                                 match perform_asr(
                                     &client,
@@ -88,8 +92,10 @@ async fn main() -> Result<()> {
                                             }
                                         }
                                         
-                                        let output_json = serde_json::to_vec(&asr_result)?;
-                                        node.send_output("text", Default::default(), output_json)?;
+                                        // Send output as StringArray
+                                        let output_json = serde_json::to_string(&asr_result)?;
+                                        let output_array = StringArray::from(vec![output_json.as_str()]);
+                                        node.send_output("text".to_string().into(), metadata.parameters.clone(), output_array)?;
                                     }
                                     Err(e) => {
                                         log::error!("ASR failed: {}", e);
@@ -109,7 +115,7 @@ async fn main() -> Result<()> {
             Event::InputClosed { id } => {
                 log::info!("Input {} closed", id);
             }
-            Event::Stop => {
+            Event::Stop(_) => {
                 log::info!("Received stop signal");
                 break;
             }
@@ -129,7 +135,7 @@ async fn perform_asr(
 ) -> Result<AsrOutput> {
     let url = "https://openspeech.bytedance.com/api/v1/asr";
     
-    let audio_base64 = base64::encode(&input.audio_data);
+    let audio_base64 = base64::engine::general_purpose::STANDARD.encode(&input.audio_data);
     
     let payload = json!({
         "app": {
@@ -192,6 +198,31 @@ async fn perform_asr(
         words,
         session_id: input.session_id.clone(),
     })
+}
+
+/// Extract bytes from ArrowData (handles both UInt8Array and StringArray)
+fn extract_bytes(data: &dora_node_api::ArrowData) -> Option<Vec<u8>> {
+    use dora_node_api::arrow::datatypes::DataType;
+    
+    let array = &data.0;
+    match array.data_type() {
+        DataType::UInt8 => {
+            let arr = array.as_any().downcast_ref::<UInt8Array>()?;
+            Some(arr.values().to_vec())
+        }
+        DataType::Utf8 => {
+            let arr = array.as_any().downcast_ref::<StringArray>()?;
+            if arr.len() > 0 {
+                Some(arr.value(0).as_bytes().to_vec())
+            } else {
+                None
+            }
+        }
+        _ => {
+            log::warn!("Unsupported data type: {:?}", array.data_type());
+            None
+        }
+    }
 }
 
 async fn save_conversation(

@@ -6,6 +6,9 @@ members = [
     "mofa-dora-bridge",
     "apps/*",
 ]
+exclude = [
+    "node-hub/*",
+]
 
 [workspace.package]
 version = "0.1.0"

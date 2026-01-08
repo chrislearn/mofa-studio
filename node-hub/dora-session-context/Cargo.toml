@@ -3,6 +3,8 @@ name = "dora-session-context"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+
 [dependencies]
 dora-node-api = "0.3"
 eyre = "0.6"

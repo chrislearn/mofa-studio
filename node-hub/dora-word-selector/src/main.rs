@@ -1,14 +1,14 @@
 // Dora Node: Word Selector
 // Selects 20-30 words from the database for review based on spaced repetition
 
-use dora_node_api::{DoraNode, Event};
+use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}, ArrowData};
 use eyre::{Context, Result};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use sqlx::sqlite::SqlitePool;
+use sqlx::Row;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct IssueWord {
     id: i64,
     word: String,
@@ -65,7 +65,8 @@ async fn main() -> Result<()> {
 
     while let Some(event) = events.recv() {
         match event {
-            Event::Input { id, data, .. } => {
+            Event::Input { id, data, metadata } => {
+                let raw_data = extract_bytes(&data);
                 match id.as_str() {
                     "trigger" => {
                         log::info!("Received trigger to select words");
@@ -87,8 +88,9 @@ async fn main() -> Result<()> {
                                     session_id: session_id.clone(),
                                 };
                                 
-                                let output_json = serde_json::to_vec(&output)?;
-                                node.send_output("selected_words", Default::default(), output_json)?;
+                                let output_json = serde_json::to_string(&output)?;
+                                let output_array = StringArray::from(vec![output_json.as_str()]);
+                                node.send_output("selected_words".to_string().into(), metadata.parameters.clone(), output_array)?;
                                 
                                 log::info!(
                                     "Selected {} words for session {}: {:?}",
@@ -111,14 +113,15 @@ async fn main() -> Result<()> {
                                     word_details: vec![],
                                     session_id: uuid::Uuid::new_v4().to_string(),
                                 };
-                                let output_json = serde_json::to_vec(&output)?;
-                                node.send_output("selected_words", Default::default(), output_json)?;
+                                let output_json = serde_json::to_string(&output)?;
+                                let output_array = StringArray::from(vec![output_json.as_str()]);
+                                node.send_output("selected_words".to_string().into(), metadata.parameters.clone(), output_array)?;
                             }
                         }
                     }
                     "control" => {
                         // Handle control commands (reset, pause, etc.)
-                        if let Ok(cmd) = serde_json::from_slice::<ControlCommand>(&data) {
+                        if let Ok(cmd) = serde_json::from_slice::<ControlCommand>(&raw_data) {
                             log::info!("Received control command: {:?}", cmd.command);
                             
                             match cmd.command.as_str() {
@@ -138,7 +141,7 @@ async fn main() -> Result<()> {
             Event::InputClosed { id } => {
                 log::info!("Input {} closed", id);
             }
-            Event::Stop => {
+            Event::Stop(_) => {
                 log::info!("Received stop signal");
                 break;
             }
@@ -147,6 +150,20 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn extract_bytes(data: &ArrowData) -> Vec<u8> {
+    // Try to extract as StringArray first
+    if let Some(array) = data.0.as_any().downcast_ref::<StringArray>() {
+        if array.len() > 0 {
+            return array.value(0).as_bytes().to_vec();
+        }
+    }
+    // Try as UInt8Array
+    if let Some(array) = data.0.as_any().downcast_ref::<UInt8Array>() {
+        return array.values().to_vec();
+    }
+    Vec::new()
 }
 
 async fn select_words(pool: &SqlitePool, limit: i64) -> Result<Vec<IssueWord>> {

@@ -1,7 +1,7 @@
 // Dora Node: Conversation Analyzer
 // Analyzes user speech for pronunciation, grammar, and vocabulary issues
 
-use dora_node_api::{DoraNode, Event};
+use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}};
 use eyre::{Context, Result};
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
@@ -67,96 +67,100 @@ async fn main() -> Result<()> {
 
     while let Some(event) = events.recv() {
         match event {
-            Event::Input { id, data, .. } => {
+            Event::Input { id, data, metadata } => {
+                let raw_data = extract_bytes(&data);
                 match id.as_str() {
                     "user_text" => {
                         log::info!("Received user text for analysis");
                         
-                        match serde_json::from_slice::<AsrOutput>(&data) {
-                            Ok(asr_result) => {
-                                if asr_result.text.trim().is_empty() {
-                                    continue;
-                                }
-                                
-                                let session_id = asr_result.session_id
-                                    .as_ref()
-                                    .map(|s| s.clone())
-                                    .unwrap_or_else(|| "unknown".to_string());
-                                
-                                log::info!("Analyzing: {}", asr_result.text);
-                                
-                                // Analyze text for issues
-                                match analyze_text(&client, &api_key, &model, &asr_result.text).await {
-                                    Ok(issues) => {
-                                        log::info!("Found {} issues", issues.len());
-                                        
-                                        // Get conversation ID
-                                        if let Ok(Some(conv_id)) = get_latest_conversation_id(
-                                            &pool,
-                                            &session_id
-                                        ).await {
-                                            // Store issues in database
-                                            let mut new_words = 0;
+                        if let Some(bytes) = &raw_data {
+                            match serde_json::from_slice::<AsrOutput>(bytes) {
+                                Ok(asr_result) => {
+                                    if asr_result.text.trim().is_empty() {
+                                        continue;
+                                    }
+                                    
+                                    let session_id = asr_result.session_id
+                                        .as_ref()
+                                        .map(|s| s.clone())
+                                        .unwrap_or_else(|| "unknown".to_string());
+                                    
+                                    log::info!("Analyzing: {}", asr_result.text);
+                                    
+                                    // Analyze text for issues
+                                    match analyze_text(&client, &api_key, &model, &asr_result.text).await {
+                                        Ok(issues) => {
+                                            log::info!("Found {} issues", issues.len());
                                             
-                                            for issue in issues {
-                                                // Save annotation
-                                                if let Err(e) = save_annotation(
-                                                    &pool,
-                                                    conv_id,
-                                                    &issue
-                                                ).await {
-                                                    log::error!("Failed to save annotation: {}", e);
-                                                    continue;
+                                            // Get conversation ID
+                                            if let Ok(Some(conv_id)) = get_latest_conversation_id(
+                                                &pool,
+                                                &session_id
+                                            ).await {
+                                                // Store issues in database
+                                                let mut new_words = 0;
+                                                
+                                                for issue in &issues {
+                                                    // Save annotation
+                                                    if let Err(e) = save_annotation(
+                                                        &pool,
+                                                        conv_id,
+                                                        issue
+                                                    ).await {
+                                                        log::error!("Failed to save annotation: {}", e);
+                                                        continue;
+                                                    }
+                                                    
+                                                    // Extract words and save to issue_words
+                                                    if let Err(e) = save_issue_word(
+                                                        &pool,
+                                                        issue,
+                                                        &asr_result.text
+                                                    ).await {
+                                                        log::error!("Failed to save issue word: {}", e);
+                                                    } else {
+                                                        new_words += 1;
+                                                    }
                                                 }
                                                 
-                                                // Extract words and save to issue_words
-                                                if let Err(e) = save_issue_word(
-                                                    &pool,
-                                                    &issue,
-                                                    &asr_result.text
-                                                ).await {
-                                                    log::error!("Failed to save issue word: {}", e);
-                                                } else {
-                                                    new_words += 1;
-                                                }
+                                                let result = AnalysisResult {
+                                                    session_id: session_id.clone(),
+                                                    issues_found: issues.len(),
+                                                    new_words_added: new_words,
+                                                };
+                                                
+                                                let output_str = serde_json::to_string(&result)?;
+                                                let output_array = StringArray::from(vec![output_str.as_str()]);
+                                                node.send_output("analysis".to_string().into(), metadata.parameters.clone(), output_array)?;
                                             }
-                                            
-                                            let result = AnalysisResult {
-                                                session_id: session_id.clone(),
-                                                issues_found: issues.len(),
-                                                new_words_added: new_words,
-                                            };
-                                            
-                                            let output_json = serde_json::to_vec(&result)?;
-                                            node.send_output("analysis", Default::default(), output_json)?;
+                                        }
+                                        Err(e) => {
+                                            log::error!("Analysis failed: {}", e);
                                         }
                                     }
-                                    Err(e) => {
-                                        log::error!("Analysis failed: {}", e);
-                                    }
-                                }
-                                
-                                // Analyze pronunciation (low confidence words)
-                                for word_info in &asr_result.words {
-                                    if word_info.confidence < 0.7 {
-                                        log::info!(
-                                            "Low confidence word detected: {} ({})",
-                                            word_info.word,
-                                            word_info.confidence
-                                        );
-                                        
-                                        if let Err(e) = save_pronunciation_issue(
-                                            &pool,
-                                            &word_info.word,
-                                            &asr_result.text
-                                        ).await {
-                                            log::error!("Failed to save pronunciation issue: {}", e);
+                                    
+                                    // Analyze pronunciation (low confidence words)
+                                    for word_info in &asr_result.words {
+                                        if word_info.confidence < 0.7 {
+                                            log::info!(
+                                                "Low confidence word detected: {} ({})",
+                                                word_info.word,
+                                                word_info.confidence
+                                            );
+                                            
+                                            if let Err(e) = save_pronunciation_issue(
+                                                &pool,
+                                                &word_info.word,
+                                                &asr_result.text
+                                            ).await {
+                                                log::error!("Failed to save pronunciation issue: {}", e);
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            Err(e) => {
-                                log::error!("Failed to parse ASR output: {}", e);
+                                Err(e) => {
+                                    log::error!("Failed to parse ASR output: {}", e);
+                                }
                             }
                         }
                     }
@@ -168,7 +172,7 @@ async fn main() -> Result<()> {
             Event::InputClosed { id } => {
                 log::info!("Input {} closed", id);
             }
-            Event::Stop => {
+            Event::Stop(_) => {
                 log::info!("Received stop signal");
                 break;
             }
@@ -177,6 +181,31 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Extract bytes from ArrowData
+fn extract_bytes(data: &dora_node_api::ArrowData) -> Option<Vec<u8>> {
+    use dora_node_api::arrow::datatypes::DataType;
+    
+    let array = &data.0;
+    match array.data_type() {
+        DataType::UInt8 => {
+            let arr = array.as_any().downcast_ref::<UInt8Array>()?;
+            Some(arr.values().to_vec())
+        }
+        DataType::Utf8 => {
+            let arr = array.as_any().downcast_ref::<StringArray>()?;
+            if arr.len() > 0 {
+                Some(arr.value(0).as_bytes().to_vec())
+            } else {
+                None
+            }
+        }
+        _ => {
+            log::warn!("Unsupported data type: {:?}", array.data_type());
+            None
+        }
+    }
 }
 
 async fn analyze_text(
@@ -235,7 +264,7 @@ async fn analyze_text(
                 .trim_end_matches("```")
                 .trim();
             
-            serde_json::from_str(cleaned).unwrap_or_else(|_| Vec::new())
+            Ok(serde_json::from_str(cleaned).unwrap_or_else(|_| Vec::new()))
         }
     }
 }

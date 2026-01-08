@@ -33,17 +33,17 @@ impl ColangScreen {
         // Look for default dataflow relative to current working directory
         // Check multiple possible locations
         let dataflow_path = std::env::current_dir().ok().and_then(|cwd| {
-            // First try: apps/colang/dataflow/voice-chat.yml (when running from workspace root)
+            // First try: apps/colang/dataflow/study-chat.yml (when running from workspace root)
             let app_path = cwd
                 .join("apps")
                 .join("colang")
                 .join("dataflow")
-                .join("voice-chat.yml");
+                .join("study-chat.yml");
             if app_path.exists() {
                 return Some(app_path);
             }
-            // Second try: dataflow/voice-chat.yml (when running from app directory)
-            let local_path = cwd.join("dataflow").join("voice-chat.yml");
+            // Second try: dataflow/study-chat.yml (when running from app directory)
+            let local_path = cwd.join("dataflow").join("study-chat.yml");
             if local_path.exists() {
                 return Some(local_path);
             }

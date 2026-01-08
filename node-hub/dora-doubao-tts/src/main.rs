@@ -1,7 +1,7 @@
 // Dora Node: Doubao TTS (Text-to-Speech)
 // Converts AI text responses to speech using Doubao Volcanic Engine API
 
-use dora_node_api::{DoraNode, Event};
+use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}, ArrowData};
 use eyre::{Context, Result};
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
@@ -56,12 +56,13 @@ async fn main() -> Result<()> {
 
     while let Some(event) = events.recv() {
         match event {
-            Event::Input { id, data, .. } => {
+            Event::Input { id, data, metadata } => {
+                let raw_data = extract_bytes(&data);
                 match id.as_str() {
                     "text" => {
                         log::debug!("Received text input");
                         
-                        match serde_json::from_slice::<TextInput>(&data) {
+                        match serde_json::from_slice::<TextInput>(&raw_data) {
                             Ok(input) => {
                                 log::info!("Converting to speech: {}", input.text);
                                 
@@ -91,8 +92,9 @@ async fn main() -> Result<()> {
                                             }
                                         }
                                         
-                                        let output_json = serde_json::to_vec(&audio_output)?;
-                                        node.send_output("audio", Default::default(), output_json)?;
+                                        let output_json = serde_json::to_string(&audio_output)?;
+                                        let output_array = StringArray::from(vec![output_json.as_str()]);
+                                        node.send_output("audio".to_string().into(), metadata.parameters.clone(), output_array)?;
                                     }
                                     Err(e) => {
                                         log::error!("TTS failed: {}", e);
@@ -112,7 +114,7 @@ async fn main() -> Result<()> {
             Event::InputClosed { id } => {
                 log::info!("Input {} closed", id);
             }
-            Event::Stop => {
+            Event::Stop(_) => {
                 log::info!("Received stop signal");
                 break;
             }
@@ -121,6 +123,20 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn extract_bytes(data: &ArrowData) -> Vec<u8> {
+    // Try to extract as StringArray first
+    if let Some(array) = data.0.as_any().downcast_ref::<StringArray>() {
+        if array.len() > 0 {
+            return array.value(0).as_bytes().to_vec();
+        }
+    }
+    // Try as UInt8Array
+    if let Some(array) = data.0.as_any().downcast_ref::<UInt8Array>() {
+        return array.values().to_vec();
+    }
+    Vec::new()
 }
 
 async fn perform_tts(
