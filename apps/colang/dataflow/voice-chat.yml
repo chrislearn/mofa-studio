@@ -104,15 +104,15 @@ nodes:
       - log
 
     env:
-      SEGMENTER_MODE: "conference"
-      SEGMENT_MODE: "sentence"
-      MIN_SEGMENT_LENGTH: "5"
-      MAX_SEGMENT_LENGTH: "15"
-      PUNCTUATION_MARKS: '。！？.!?，,、；：""''（）【】《》'
-      REMOVE_SPEAKER_ID: "true"
-      LOG_LEVEL: "DEBUG"
-      AUDIO_BUFFER_LOW_WATER_MARK: "30"
-      AUDIO_BUFFER_HIGH_WATER_MARK: "60"
+      SEGMENTER_MODE: conference
+      SEGMENT_MODE: sentence
+      MIN_SEGMENT_LENGTH: 5
+      MAX_SEGMENT_LENGTH: 15
+      PUNCTUATION_MARKS: "。！？.!?，,、；：\"\"''（）【】《》"
+      REMOVE_SPEAKER_ID: true
+      LOG_LEVEL: DEBUG
+      AUDIO_BUFFER_LOW_WATER_MARK: 30
+      AUDIO_BUFFER_HIGH_WATER_MARK: 60
 
   # PrimeSpeech TTS for Student1 (Zhao Daniu - Male, Rational Voice)
   - id: primespeech-student1
@@ -126,9 +126,9 @@ nodes:
       - segment_complete
       - log
     env:
-      TRANSFORMERS_OFFLINE: "1"
-      HF_HUB_OFFLINE: "1"
-      VOICE_NAME: "Zhao Daniu"
+      TRANSFORMERS_OFFLINE: 1
+      HF_HUB_OFFLINE: 1
+      VOICE_NAME: Zhao Daniu
       PRIMESPEECH_MODEL_DIR: $HOME/.dora/models/primespeech
       TEXT_LANG: zh
       PROMPT_LANG: zh
@@ -136,14 +136,14 @@ nodes:
       TOP_P: 1.0
       TEMPERATURE: 1.0
       SPEED_FACTOR: 1.0
-      FRAGMENT_INTERVAL: "0.1"
+      FRAGMENT_INTERVAL: 0.1
       USE_GPU: false
       NUM_THREADS: 4
-      RETURN_FRAGMENT: "false"
+      RETURN_FRAGMENT: false
       LOG_LEVEL: DEBUG
-      ENABLE_INTERNAL_SEGMENTATION: "true"
-      TTS_MAX_SEGMENT_LENGTH: "100"
-      TTS_MIN_SEGMENT_LENGTH: "20"
+      ENABLE_INTERNAL_SEGMENTATION: true
+      TTS_MAX_SEGMENT_LENGTH: 100
+      TTS_MIN_SEGMENT_LENGTH: 20
 
   # PrimeSpeech TTS for Student2 (Chen Yifan - Female, Emotional Voice)
   - id: primespeech-student2
@@ -157,9 +157,9 @@ nodes:
       - segment_complete
       - log
     env:
-      TRANSFORMERS_OFFLINE: "1"
-      HF_HUB_OFFLINE: "1"
-      VOICE_NAME: "Chen Yifan"
+      TRANSFORMERS_OFFLINE: 1
+      HF_HUB_OFFLINE: 1
+      VOICE_NAME: Chen Yifan
       PRIMESPEECH_MODEL_DIR: $HOME/.dora/models/primespeech
       TEXT_LANG: zh
       PROMPT_LANG: zh
@@ -167,14 +167,14 @@ nodes:
       TOP_P: 1.0
       TEMPERATURE: 1.0
       SPEED_FACTOR: 1.1
-      FRAGMENT_INTERVAL: "0.2"
+      FRAGMENT_INTERVAL: 0.2
       USE_GPU: false
       NUM_THREADS: 4
-      RETURN_FRAGMENT: "false"
+      RETURN_FRAGMENT: false
       LOG_LEVEL: DEBUG
-      ENABLE_INTERNAL_SEGMENTATION: "true"
-      TTS_MAX_SEGMENT_LENGTH: "100"
-      TTS_MIN_SEGMENT_LENGTH: "20"
+      ENABLE_INTERNAL_SEGMENTATION: true
+      TTS_MAX_SEGMENT_LENGTH: 100
+      TTS_MIN_SEGMENT_LENGTH: 20
 
   # PrimeSpeech TTS for Tutor (Luo Xiang - Male, Authoritative Voice)
   - id: primespeech-tutor
@@ -188,9 +188,9 @@ nodes:
       - segment_complete
       - log
     env:
-      TRANSFORMERS_OFFLINE: "1"
-      HF_HUB_OFFLINE: "1"
-      VOICE_NAME: "Luo Xiang"
+      TRANSFORMERS_OFFLINE: 1
+      HF_HUB_OFFLINE: 1
+      VOICE_NAME: Luo Xiang
       PRIMESPEECH_MODEL_DIR: $HOME/.dora/models/primespeech
       TEXT_LANG: zh
       PROMPT_LANG: zh
@@ -198,14 +198,14 @@ nodes:
       TOP_P: 1.0
       TEMPERATURE: 1.0
       SPEED_FACTOR: 1.1
-      FRAGMENT_INTERVAL: "0.1"
+      FRAGMENT_INTERVAL: 0.1
       USE_GPU: false
       NUM_THREADS: 4
-      RETURN_FRAGMENT: "false"
+      RETURN_FRAGMENT: false
       LOG_LEVEL: DEBUG
-      ENABLE_INTERNAL_SEGMENTATION: "true"
-      TTS_MAX_SEGMENT_LENGTH: "100"
-      TTS_MIN_SEGMENT_LENGTH: "20"
+      ENABLE_INTERNAL_SEGMENTATION: true
+      TTS_MAX_SEGMENT_LENGTH: 100
+      TTS_MIN_SEGMENT_LENGTH: 20
 
   # ============ 3 Conference Bridges (Switch) ============
 
@@ -217,7 +217,7 @@ nodes:
       LOG_LEVEL: INFO
       STREAMING_PORTS: student1,tutor,student2
       ERROR_MESSAGE_TEMPLATE: "[{participant} is experiencing technical difficulties. We will proceed without their response.]"
-      DORA_STUDY_MODE: "true"
+      DORA_STUDY_MODE: true
     inputs:
       student2:
         source: student2/text
@@ -241,7 +241,7 @@ nodes:
       LOG_LEVEL: INFO
       STREAMING_PORTS: student1,tutor,student2
       ERROR_MESSAGE_TEMPLATE: "[{participant} is experiencing technical difficulties. We will proceed without their response.]"
-      DORA_STUDY_MODE: "true"
+      DORA_STUDY_MODE: true
     inputs:
       student1:
         source: student1/text
@@ -265,7 +265,7 @@ nodes:
       LOG_LEVEL: INFO
       STREAMING_PORTS: student1,tutor,student2
       ERROR_MESSAGE_TEMPLATE: "[{participant} is experiencing technical difficulties. We will proceed without their response.]"
-      DORA_STUDY_MODE: "true"
+      DORA_STUDY_MODE: true
     inputs:
       student1:
         source: student1/text
@@ -345,8 +345,8 @@ nodes:
   - id: mofa-prompt-input
     path: dynamic
     env:
-      DORA_STUDY_MODE: "true"
-      LOG_LEVEL: "DEBUG"
+      DORA_STUDY_MODE: true
+      LOG_LEVEL: DEBUG
     inputs:
       # LLM text outputs only (for chat display)
       llm1_text:

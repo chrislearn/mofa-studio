@@ -385,7 +385,7 @@ impl ColangScreen {
     pub(super) fn handle_mofa_stop(&mut self, cx: &mut Cx) {
         ::log::info!("MoFA Stop clicked");
 
-        self.add_log(cx, "[INFO] [App] Force stopping MoFA dataflow...");
+        self.add_log(cx, "[INFO] [App] Force stopping Colang dataflow...");
 
         // Show "Stopping" state while stop is in progress
         self.view.mofa_hero(ids!(left_column.mofa_hero)).set_connection_status(cx, ConnectionStatus::Stopping);
