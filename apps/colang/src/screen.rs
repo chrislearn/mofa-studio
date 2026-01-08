@@ -99,17 +99,13 @@ live_design! {
                     flow: Right
                     spacing: (SECTION_SPACING)
 
-                    student1_panel = <ParticipantPanel> {
+                    myself_panel = <ParticipantPanel> {
                         width: Fill, height: Fit
-                        header = { name_label = { text: "Student 1" } }
+                        header = { name_label = { text: "Myself" } }
                     }
-                    student2_panel = <ParticipantPanel> {
+                    teacher_panel = <ParticipantPanel> {
                         width: Fill, height: Fit
-                        header = { name_label = { text: "Student 2" } }
-                    }
-                    tutor_panel = <ParticipantPanel> {
-                        width: Fill, height: Fit
-                        header = { name_label = { text: "Tutor" } }
+                        header = { name_label = { text: "Teacher" } }
                     }
                 }
             }
@@ -1146,7 +1142,7 @@ pub struct ColangScreen {
     audio_player: Option<std::sync::Arc<crate::audio_player::AudioPlayer>>,
     // Participant audio levels for decay animation (matches conference-dashboard)
     #[rust]
-    participant_levels: [f64; 3],  // 0=student1, 1=student2, 2=tutor
+    participant_levels: [f64; 2],  // 0=myself, 1=teacher
 }
 
 impl Widget for ColangScreen {
@@ -1424,9 +1420,8 @@ impl StateChangeListener for ColangScreenRef {
             inner.view.mofa_hero(ids!(left_column.mofa_hero)).update_dark_mode(cx, dark_mode);
 
             // Apply dark mode to participant panels
-            inner.view.participant_panel(ids!(left_column.participant_container.participant_bar.student1_panel)).update_dark_mode(cx, dark_mode);
-            inner.view.participant_panel(ids!(left_column.participant_container.participant_bar.student2_panel)).update_dark_mode(cx, dark_mode);
-            inner.view.participant_panel(ids!(left_column.participant_container.participant_bar.tutor_panel)).update_dark_mode(cx, dark_mode);
+            inner.view.participant_panel(ids!(left_column.participant_container.participant_bar.myself_panel)).update_dark_mode(cx, dark_mode);
+            inner.view.participant_panel(ids!(left_column.participant_container.participant_bar.teacher_panel)).update_dark_mode(cx, dark_mode);
 
             // Apply dark mode to prompt section
             inner.view.view(ids!(left_column.prompt_container.prompt_section)).apply_over(cx, live!{

@@ -301,14 +301,13 @@ impl AudioPlayer {
         self.state.lock().output_waveform.clone()
     }
 
-    /// Get current participant index (0=student1, 1=student2, 2=tutor)
+    /// Get current participant index (0=myself, 1=teacher)
     /// Matches conference-dashboard's interface for consistent behavior
     pub fn current_participant_idx(&self) -> Option<usize> {
         self.state.lock().current_participant.as_ref().and_then(|p| {
             match p.as_str() {
-                "student1" => Some(0),
-                "student2" => Some(1),
-                "tutor" => Some(2),
+                "myself" => Some(0),
+                "teacher" => Some(1),
                 _ => None,
             }
         })

@@ -251,10 +251,9 @@ impl ColangScreen {
             };
 
             // Update participant panels using direct apply_over (exactly like conference-dashboard)
-            let panel_ids: [&[LiveId]; 3] = [
-                ids!(left_column.participant_container.participant_bar.student1_panel),
-                ids!(left_column.participant_container.participant_bar.student2_panel),
-                ids!(left_column.participant_container.participant_bar.tutor_panel),
+            let panel_ids: [&[LiveId]; _] = [
+                ids!(left_column.participant_container.participant_bar.myself_panel),
+                ids!(left_column.participant_container.participant_bar.teacher_panel),
             ];
 
             for (i, panel_id) in panel_ids.into_iter().enumerate() {
