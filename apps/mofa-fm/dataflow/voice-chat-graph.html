@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+</head>
+
+<body>
+    <div class="mermaid">
+        flowchart TB
+  bridge-to-student1["**bridge-to-student1**"]
+  bridge-to-student2["**bridge-to-student2**"]
+  bridge-to-tutor["**bridge-to-tutor**"]
+  conference-controller["**conference-controller**"]
+  mofa-audio-player["**mofa-audio-player**"]
+  mofa-prompt-input["**mofa-prompt-input**"]
+  mofa-system-log[/"**mofa-system-log**"\]
+  multi-text-segmenter["**multi-text-segmenter**"]
+  primespeech-student1["**primespeech-student1**"]
+  primespeech-student2["**primespeech-student2**"]
+  primespeech-tutor["**primespeech-tutor**"]
+  student1["**student1**"]
+  student2["**student2**"]
+  tutor["**tutor**"]
+  conference-controller -- control_llm1 as control --> bridge-to-student1
+  student2 -- text as student2 --> bridge-to-student1
+  tutor -- text as tutor --> bridge-to-student1
+  conference-controller -- control_llm2 as control --> bridge-to-student2
+  student1 -- text as student1 --> bridge-to-student2
+  tutor -- text as tutor --> bridge-to-student2
+  conference-controller -- control_judge as control --> bridge-to-tutor
+  student1 -- text as student1 --> bridge-to-tutor
+  student2 -- text as student2 --> bridge-to-tutor
+  mofa-audio-player -- buffer_status --> conference-controller
+  mofa-prompt-input -- control --> conference-controller
+  mofa-audio-player -- session_start --> conference-controller
+  student1 -- text as student1 --> conference-controller
+  student2 -- text as student2 --> conference-controller
+  tutor -- text as tutor --> conference-controller
+  primespeech-student1 -- audio as audio_student1 --> mofa-audio-player
+  primespeech-student2 -- audio as audio_student2 --> mofa-audio-player
+  primespeech-tutor -- audio as audio_tutor --> mofa-audio-player
+  conference-controller -- llm_control as control --> mofa-audio-player
+  tutor -- text as judge_text --> mofa-prompt-input
+  student1 -- text as llm1_text --> mofa-prompt-input
+  student2 -- text as llm2_text --> mofa-prompt-input
+  mofa-audio-player -- log as audio_player_log --> mofa-system-log
+  mofa-audio-player -- status as audio_status --> mofa-system-log
+  bridge-to-student1 -- log as bridge1_log --> mofa-system-log
+  bridge-to-student1 -- status as bridge1_status --> mofa-system-log
+  bridge-to-student1 -- text as bridge1_text --> mofa-system-log
+  bridge-to-student2 -- log as bridge2_log --> mofa-system-log
+  bridge-to-student2 -- status as bridge2_status --> mofa-system-log
+  bridge-to-student2 -- text as bridge2_text --> mofa-system-log
+  bridge-to-tutor -- log as bridge3_log --> mofa-system-log
+  bridge-to-tutor -- status as bridge3_status --> mofa-system-log
+  bridge-to-tutor -- text as bridge3_text --> mofa-system-log
+  conference-controller -- control_judge --> mofa-system-log
+  conference-controller -- control_llm1 --> mofa-system-log
+  conference-controller -- control_llm2 --> mofa-system-log
+  conference-controller -- log as controller_log --> mofa-system-log
+  conference-controller -- status as controller_status --> mofa-system-log
+  tutor -- log as judge_log --> mofa-system-log
+  tutor -- status as judge_status --> mofa-system-log
+  tutor -- text as judge_text --> mofa-system-log
+  student1 -- log as llm1_log --> mofa-system-log
+  student1 -- status as llm1_status --> mofa-system-log
+  student1 -- text as llm1_text --> mofa-system-log
+  student2 -- log as llm2_log --> mofa-system-log
+  student2 -- status as llm2_status --> mofa-system-log
+  student2 -- text as llm2_text --> mofa-system-log
+  multi-text-segmenter -- log as segmenter_log --> mofa-system-log
+  multi-text-segmenter -- status as segmenter_status --> mofa-system-log
+  primespeech-student1 -- log as tts1_log --> mofa-system-log
+  primespeech-student1 -- status as tts1_status --> mofa-system-log
+  primespeech-student2 -- log as tts2_log --> mofa-system-log
+  primespeech-student2 -- status as tts2_status --> mofa-system-log
+  primespeech-tutor -- log as tts3_log --> mofa-system-log
+  primespeech-tutor -- status as tts3_status --> mofa-system-log
+  mofa-audio-player -- buffer_status as audio_buffer_control --> multi-text-segmenter
+  mofa-audio-player -- audio_complete --> multi-text-segmenter
+  conference-controller -- llm_control as control --> multi-text-segmenter
+  conference-controller -- control_judge as reset --> multi-text-segmenter
+  student1 -- text as student1 --> multi-text-segmenter
+  student2 -- text as student2 --> multi-text-segmenter
+  tutor -- text as tutor --> multi-text-segmenter
+  multi-text-segmenter -- text_segment_student1 as text --> primespeech-student1
+  multi-text-segmenter -- text_segment_student2 as text --> primespeech-student2
+  multi-text-segmenter -- text_segment_tutor as text --> primespeech-tutor
+  conference-controller -- llm_control as control --> student1
+  bridge-to-student1 -- text --> student1
+  conference-controller -- llm_control as control --> student2
+  bridge-to-student2 -- text --> student2
+  conference-controller -- judge_prompt as control --> tutor
+  bridge-to-tutor -- text --> tutor
+
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'base' });
+    </script>
+</body>
+
+</html>

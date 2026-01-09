@@ -40,7 +40,7 @@ nodes:
       DOUBAO_APP_ID: ${DOUBAO_APP_ID:-}
       DOUBAO_ACCESS_TOKEN: ${DOUBAO_ACCESS_TOKEN:-}
       LANGUAGE: en
-      DATABASE_URL: sqlite:///d:/Works/chrislearn/mofa-studio/apps/colang/learning_companion.db
+      DATABASE_URL: sqlite://learning_companion.db
       LOG_LEVEL: DEBUG
       RUST_LOG: debug
       DEBUG_ASR_STREAM: "true"
@@ -79,7 +79,7 @@ nodes:
     env:
       DOUBAO_API_KEY: ${DOUBAO_API_KEY:-}
       DOUBAO_MODEL: doubao-pro-32k
-      DATABASE_URL: sqlite:///d:/Works/chrislearn/mofa-studio/apps/colang/learning_companion.db
+      DATABASE_URL: sqlite://learning_companion.db
       LOG_LEVEL: DEBUG
       RUST_LOG: debug
       DEBUG_ANALYSIS: "true"
@@ -105,7 +105,7 @@ nodes:
       - status
       - log
     env:
-      DATABASE_URL: sqlite:///d:/Works/chrislearn/mofa-studio/apps/colang/learning_companion.db
+      DATABASE_URL: sqlite://learning_companion.db
       STORAGE_MODE: report  # 存储模式: report (存储分析报告)
       LOG_LEVEL: DEBUG
       RUST_LOG: debug

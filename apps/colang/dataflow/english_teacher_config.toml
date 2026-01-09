@@ -11,8 +11,8 @@ max_tokens = 1000
 top_p = 0.95
 stream = true
 
-[system_prompt]
-content = """You are a professional English teacher with expertise in helping non-native speakers improve their conversational English. Your teaching style is patient, encouraging, and focused on practical communication.
+[default]
+system_prompt = """You are a professional English teacher with expertise in helping non-native speakers improve their conversational English. Your teaching style is patient, encouraging, and focused on practical communication.
 
 Key responsibilities:
 1. Conduct natural conversations primarily in English
