@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <defs>
+    <style>
+      .t { font-family: Segoe UI, Arial, sans-serif; fill: #111; }
+      .h1 { font-size: 26px; font-weight: 700; }
+      .h2 { font-size: 16px; font-weight: 700; }
+      .p { font-size: 13px; }
+      .muted { fill: #555; }
+      .frame { fill: #fff; stroke: #222; stroke-width: 2; rx: 14; }
+      .panel { fill: #f7f7f7; stroke: #333; stroke-width: 2; rx: 10; }
+      .chip { fill: #eef3ff; stroke: #3b66ff; stroke-width: 1.5; rx: 10; }
+      .note { fill: #eafff1; stroke: #23a55a; stroke-width: 2; rx: 12; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1200" height="820" fill="#ffffff"/>
+  <text x="40" y="56" class="t h1">方案9 草图：课堂模式（班级/作业/点评/协作）</text>
+  <text x="40" y="86" class="t p muted">重点：布置任务→提交→点评→自动生成复习队列；Chat 既是个人教练也是班级助教。</text>
+
+  <rect x="60" y="120" width="520" height="640" class="frame"/>
+  <text x="80" y="152" class="t h2">屏幕 A：班级主页</text>
+  <rect x="80" y="180" width="480" height="520" class="panel"/>
+  <text x="100" y="214" class="t p">班级：English Sprint #12</text>
+  <text x="100" y="244" class="t p muted">本周目标：酒店场景口语</text>
+  <text x="100" y="270" class="t p muted">公告：周五晚 8 点口语直播</text>
+  <rect x="100" y="300" width="440" height="44" class="chip"/>
+  <text x="118" y="328" class="t p">作业：口语录音（3min）｜未交</text>
+  <rect x="100" y="355" width="440" height="44" class="chip"/>
+  <text x="118" y="383" class="t p">作业：写作改写（120词）｜已评</text>
+  <rect x="100" y="410" width="440" height="44" class="chip"/>
+  <text x="118" y="438" class="t p">词表：20 词复习｜进行中</text>
+  <text x="100" y="490" class="t p muted">入口：班级助教 Chat｜讨论区｜直播间</text>
+
+  <rect x="640" y="120" width="500" height="640" class="frame"/>
+  <text x="660" y="152" class="t h2">屏幕 B：作业详情（口语）</text>
+  <rect x="660" y="180" width="460" height="260" class="panel"/>
+  <text x="680" y="214" class="t p">作业：Hotel role-play</text>
+  <text x="680" y="246" class="t p muted">要求：使用 reservation / availability</text>
+  <rect x="680" y="272" width="200" height="40" class="chip"/>
+  <text x="726" y="298" class="t p">🎙️ 录音提交</text>
+  <rect x="900" y="272" width="200" height="40" class="chip"/>
+  <text x="944" y="298" class="t p">上传文件</text>
+
+  <rect x="660" y="470" width="460" height="230" class="note"/>
+  <text x="680" y="504" class="t p">老师点评（提交后）</text>
+  <text x="680" y="536" class="t p muted">- 发音：reservation 重音需调整</text>
+  <text x="680" y="562" class="t p muted">- 语法：want to + V</text>
+  <text x="680" y="596" class="t p muted">自动生成：纠错卡 + 复习队列</text>
+</svg>

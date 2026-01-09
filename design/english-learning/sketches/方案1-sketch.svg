@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <defs>
+    <style>
+      .t { font-family: Segoe UI, Arial, sans-serif; fill: #111; }
+      .h1 { font-size: 26px; font-weight: 700; }
+      .h2 { font-size: 16px; font-weight: 700; }
+      .p { font-size: 13px; }
+      .muted { fill: #555; }
+      .card { fill: #fff; stroke: #222; stroke-width: 2; rx: 14; }
+      .panel { fill: #f7f7f7; stroke: #333; stroke-width: 2; rx: 10; }
+      .chip { fill: #eef3ff; stroke: #3b66ff; stroke-width: 1.5; rx: 10; }
+      .nav { fill: #fafafa; stroke: #222; stroke-width: 2; rx: 0; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="820" fill="#ffffff"/>
+  <text x="40" y="56" class="t h1">方案1（移动端）草图：学习仪表盘 + Chat 教练（底部导航）</text>
+  <text x="40" y="86" class="t p muted">图片格式：SVG，可直接预览/导出 PNG。重点：打开即学习、Chat 驱动闭环。</text>
+
+  <!-- Screen 1: Dashboard -->
+  <rect x="60" y="120" width="510" height="640" class="card"/>
+  <text x="80" y="152" class="t h2">屏幕 A：Dashboard（首页）</text>
+  <rect x="80" y="170" width="470" height="68" class="panel"/>
+  <text x="100" y="198" class="t p">早上好 Chris</text>
+  <text x="350" y="198" class="t p">连胜：7天</text>
+  <text x="100" y="222" class="t p muted">今日目标：12分钟　进度：6/12</text>
+
+  <rect x="80" y="255" width="470" height="180" class="panel"/>
+  <text x="100" y="283" class="t p">今日任务</text>
+  <rect x="100" y="300" width="210" height="42" class="chip"/>
+  <text x="112" y="326" class="t p">口语任务 3min｜旅行</text>
+  <rect x="330" y="300" width="200" height="42" class="chip"/>
+  <text x="342" y="326" class="t p">新词 8｜复习 20</text>
+  <rect x="100" y="354" width="210" height="42" class="chip"/>
+  <text x="112" y="380" class="t p">听力 1段</text>
+  <rect x="330" y="354" width="200" height="42" class="chip"/>
+  <text x="342" y="380" class="t p">写作 1题</text>
+
+  <rect x="80" y="450" width="470" height="150" class="panel"/>
+  <text x="100" y="478" class="t p">快捷开始</text>
+  <rect x="100" y="495" width="210" height="42" class="chip"/>
+  <text x="112" y="521" class="t p">▶ 开始对话</text>
+  <rect x="330" y="495" width="200" height="42" class="chip"/>
+  <text x="342" y="521" class="t p">＋ 导入文本</text>
+  <rect x="100" y="548" width="210" height="42" class="chip"/>
+  <text x="112" y="574" class="t p">🎧 跟读训练</text>
+  <rect x="330" y="548" width="200" height="42" class="chip"/>
+  <text x="342" y="574" class="t p">🧠 快速复习</text>
+
+  <rect x="80" y="615" width="470" height="90" class="panel"/>
+  <text x="100" y="643" class="t p">今日复盘（自动生成）</text>
+  <text x="100" y="667" class="t p muted">- 常错：冠词 / 时态　- 推荐练习：3 道</text>
+
+  <rect x="60" y="730" width="510" height="30" class="nav"/>
+  <text x="90" y="751" class="t p muted">首页</text>
+  <text x="190" y="751" class="t p">Chat</text>
+  <text x="290" y="751" class="t p muted">词库</text>
+  <text x="390" y="751" class="t p muted">复习</text>
+  <text x="490" y="751" class="t p muted">我的</text>
+
+  <!-- Screen 2: Chat -->
+  <rect x="630" y="120" width="510" height="640" class="card"/>
+  <text x="650" y="152" class="t h2">屏幕 B：Chat（纠错 + 即时词卡）</text>
+  <rect x="650" y="170" width="470" height="52" class="panel"/>
+  <text x="670" y="201" class="t p">Chat教练｜模式：口语纠错 ▾</text>
+
+  <rect x="650" y="235" width="470" height="330" class="panel"/>
+  <text x="670" y="265" class="t p">教练：今天练“订酒店”。</text>
+  <text x="670" y="295" class="t p">你：I want book a room…</text>
+  <text x="670" y="325" class="t p">教练：✅ I want to book a room.</text>
+  <text x="670" y="350" class="t p muted">原因：want to + 动词原形</text>
+  <text x="670" y="385" class="t p">你：Is there any availability?</text>
+  <text x="670" y="415" class="t p">教练：更地道：Do you have any…</text>
+
+  <rect x="690" y="450" width="410" height="70" class="chip"/>
+  <text x="706" y="478" class="t p">即时词卡：availability　＋收藏</text>
+  <text x="706" y="504" class="t p muted">快练：拼写 / 跟读 / 造句（15秒）</text>
+
+  <rect x="650" y="585" width="470" height="70" class="panel"/>
+  <text x="670" y="616" class="t p muted">输入框…　🎙️语音　📎资料　➤发送</text>
+
+  <rect x="630" y="730" width="510" height="30" class="nav"/>
+  <text x="660" y="751" class="t p muted">首页</text>
+  <text x="760" y="751" class="t p">Chat</text>
+  <text x="860" y="751" class="t p muted">词库</text>
+  <text x="960" y="751" class="t p muted">复习</text>
+  <text x="1060" y="751" class="t p muted">我的</text>
+</svg>

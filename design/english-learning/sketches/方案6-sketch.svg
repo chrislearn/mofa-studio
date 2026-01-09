@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <defs>
+    <style>
+      .t { font-family: Segoe UI, Arial, sans-serif; fill: #111; }
+      .h1 { font-size: 26px; font-weight: 700; }
+      .h2 { font-size: 16px; font-weight: 700; }
+      .p { font-size: 13px; }
+      .muted { fill: #555; }
+      .frame { fill: #fff; stroke: #222; stroke-width: 2; rx: 14; }
+      .panel { fill: #f7f7f7; stroke: #333; stroke-width: 2; rx: 10; }
+      .chip { fill: #eef3ff; stroke: #3b66ff; stroke-width: 1.5; rx: 10; }
+      .loot { fill: #eafff1; stroke: #23a55a; stroke-width: 2; rx: 12; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1200" height="820" fill="#ffffff"/>
+  <text x="40" y="56" class="t h1">方案6（移动端）草图：故事闯关（剧情驱动学习）</text>
+  <text x="40" y="86" class="t p muted">重点：章节地图→关卡对话→词/句掉落进背包→转入复习队列。</text>
+
+  <rect x="60" y="120" width="520" height="640" class="frame"/>
+  <text x="80" y="152" class="t h2">屏幕 A：故事地图（章节）</text>
+  <rect x="80" y="170" width="480" height="520" class="panel"/>
+  <text x="100" y="208" class="t p">Chapter Map</text>
+  <rect x="100" y="235" width="440" height="44" class="chip"/>
+  <text x="118" y="263" class="t p">[1] Airport　✅✅✅</text>
+  <rect x="100" y="290" width="440" height="44" class="chip"/>
+  <text x="118" y="318" class="t p">[2] Hotel　✅✅░（继续）</text>
+  <rect x="100" y="345" width="440" height="44" class="chip"/>
+  <text x="118" y="373" class="t p">[3] Restaurant　░░░</text>
+  <rect x="100" y="400" width="440" height="44" class="chip"/>
+  <text x="118" y="428" class="t p">[4] Meeting　🔒</text>
+  <text x="100" y="478" class="t p muted">今日推荐：继续 Hotel - 关卡3</text>
+  <rect x="100" y="510" width="180" height="40" class="chip"/>
+  <text x="140" y="536" class="t p">开始</text>
+
+  <rect x="640" y="120" width="500" height="640" class="frame"/>
+  <text x="660" y="152" class="t h2">屏幕 B：关卡对话（NPC）</text>
+  <rect x="660" y="180" width="460" height="380" class="panel"/>
+  <text x="680" y="214" class="t p">Hotel Lobby - Level 3</text>
+  <text x="680" y="252" class="t p">NPC：Do you have a reservation?</text>
+  <text x="680" y="290" class="t p muted">A) Yes, it’s under Chris.</text>
+  <text x="680" y="318" class="t p muted">B) I want book a room.</text>
+  <text x="680" y="346" class="t p muted">C) 自定义输入（🎙️语音 / 文本）</text>
+  <rect x="680" y="400" width="400" height="40" class="chip"/>
+  <text x="698" y="426" class="t p">判定：是否使用目标句型 / 发音评分</text>
+
+  <rect x="660" y="580" width="460" height="120" class="loot"/>
+  <text x="680" y="614" class="t p">奖励（掉落）</text>
+  <text x="680" y="642" class="t p muted">reservation（词卡）＋收入背包</text>
+  <text x="680" y="668" class="t p muted">make a reservation（短语卡）</text>
+</svg>

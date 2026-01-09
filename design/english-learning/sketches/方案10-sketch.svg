@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <defs>
+    <style>
+      .t { font-family: Segoe UI, Arial, sans-serif; fill: #111; }
+      .h1 { font-size: 26px; font-weight: 700; }
+      .h2 { font-size: 16px; font-weight: 700; }
+      .p { font-size: 13px; }
+      .muted { fill: #555; }
+      .frame { fill: #fff; stroke: #222; stroke-width: 2; rx: 14; }
+      .panel { fill: #f7f7f7; stroke: #333; stroke-width: 2; rx: 10; }
+      .chip { fill: #eef3ff; stroke: #3b66ff; stroke-width: 1.5; rx: 10; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1200" height="820" fill="#ffffff"/>
+  <text x="40" y="56" class="t h1">方案10（移动端）草图：极简专注（聊 / 记 / 复习）</text>
+  <text x="40" y="86" class="t p muted">重点：单页完成每日三件事；最少选择；词卡极简信息架构。</text>
+
+  <rect x="60" y="120" width="520" height="640" class="frame"/>
+  <text x="80" y="152" class="t h2">屏幕 A：今日单页（All-in-one）</text>
+  <rect x="80" y="180" width="480" height="520" class="panel"/>
+  <text x="100" y="214" class="t p">今日：1/10　连胜 12 天</text>
+  <rect x="100" y="250" width="440" height="90" class="chip"/>
+  <text x="118" y="280" class="t p">① 聊（3分钟）</text>
+  <text x="118" y="306" class="t p muted">[开始对话]</text>
+  <rect x="100" y="360" width="440" height="90" class="chip"/>
+  <text x="118" y="390" class="t p">② 记（选 5 个词/句）</text>
+  <text x="118" y="416" class="t p muted">今日已选：2/5（从对话中添加）</text>
+  <rect x="100" y="470" width="440" height="90" class="chip"/>
+  <text x="118" y="500" class="t p">③ 复习（到期 18 张）</text>
+  <text x="118" y="526" class="t p muted">[开始复习]</text>
+  <text x="100" y="610" class="t p muted">完成后：今日总结 + 明日建议</text>
+
+  <rect x="640" y="120" width="500" height="640" class="frame"/>
+  <text x="660" y="152" class="t h2">屏幕 B：极简词卡</text>
+  <rect x="660" y="180" width="460" height="300" class="panel"/>
+  <text x="680" y="214" class="t p">reservation　n.　🔊</text>
+  <text x="680" y="250" class="t p">释义：预订</text>
+  <text x="680" y="286" class="t p">例句：I’d like to make a reservation.</text>
+  <text x="680" y="322" class="t p muted">来源：今日对话</text>
+  <rect x="680" y="360" width="160" height="40" class="chip"/>
+  <text x="710" y="386" class="t p">标记掌握</text>
+  <rect x="850" y="360" width="160" height="40" class="chip"/>
+  <text x="886" y="386" class="t p">明天再说</text>
+</svg>

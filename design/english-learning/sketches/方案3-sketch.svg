@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <defs>
+    <style>
+      .t { font-family: Segoe UI, Arial, sans-serif; fill: #111; }
+      .h1 { font-size: 26px; font-weight: 700; }
+      .h2 { font-size: 16px; font-weight: 700; }
+      .p { font-size: 13px; }
+      .muted { fill: #555; }
+      .card { fill: #fff; stroke: #222; stroke-width: 2; rx: 14; }
+      .panel { fill: #f7f7f7; stroke: #333; stroke-width: 2; rx: 10; }
+      .tile { fill: #eef3ff; stroke: #3b66ff; stroke-width: 1.5; rx: 12; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1200" height="820" fill="#ffffff"/>
+  <text x="40" y="56" class="t h1">方案3（移动端）草图：卡片流主页（场景化入口）</text>
+  <text x="40" y="86" class="t p muted">重点：把复杂功能变成可组合“学习卡”，像健身训练编排。</text>
+
+  <rect x="70" y="120" width="470" height="640" class="card"/>
+  <text x="90" y="152" class="t h2">屏幕 A：主页（卡片流）</text>
+  <rect x="90" y="170" width="430" height="56" class="panel"/>
+  <text x="110" y="202" class="t p">今日卡片 1/8　目标：12分钟</text>
+
+  <rect x="90" y="240" width="430" height="78" class="tile"/>
+  <text x="110" y="270" class="t p">继续上次：订酒店对话 ▶ 2min</text>
+  <text x="110" y="296" class="t p muted">一键进入 Chat（自动带上下文）</text>
+
+  <rect x="90" y="332" width="430" height="78" class="tile"/>
+  <text x="110" y="362" class="t p">薄弱点：冠词 a/an/the（5题）</text>
+  <text x="110" y="388" class="t p muted">直接在卡片内完成，不跳页</text>
+
+  <rect x="90" y="424" width="430" height="78" class="tile"/>
+  <text x="110" y="454" class="t p">新词卡：8个（来自昨日播客）</text>
+  <text x="110" y="480" class="t p muted">reservation / availability / …</text>
+
+  <rect x="90" y="516" width="430" height="78" class="tile"/>
+  <text x="110" y="546" class="t p">写作卡：120词自我介绍</text>
+  <text x="110" y="572" class="t p muted">提交后生成纠错卡 + 复习队列</text>
+
+  <rect x="90" y="608" width="430" height="78" class="tile"/>
+  <text x="110" y="638" class="t p">听力卡：精听 30s（可循环）</text>
+  <text x="110" y="664" class="t p muted">选句 → 解释 / 收藏句卡 / 跟读</text>
+
+  <rect x="610" y="120" width="520" height="640" class="card"/>
+  <text x="630" y="152" class="t h2">屏幕 B：任务卡启动（弹层）</text>
+  <rect x="650" y="190" width="480" height="220" class="panel"/>
+  <text x="670" y="222" class="t p">任务：角色扮演｜前台订房</text>
+  <text x="670" y="252" class="t p muted">时长：3min　难度：⭐⭐</text>
+  <text x="670" y="286" class="t p">目标句型：</text>
+  <text x="670" y="312" class="t p muted">I'd like to… / Could you…</text>
+  <text x="670" y="346" class="t p">完成条件：使用 3 个目标句型</text>
+  <rect x="650" y="430" width="480" height="310" class="panel"/>
+  <text x="670" y="462" class="t p">进入 Chat 后（简化）：</text>
+  <text x="670" y="490" class="t p muted">- 边聊边纠错</text>
+  <text x="670" y="514" class="t p muted">- 新词/重点句自动入库</text>
+  <text x="670" y="538" class="t p muted">- 结束生成总结卡</text>
+</svg>

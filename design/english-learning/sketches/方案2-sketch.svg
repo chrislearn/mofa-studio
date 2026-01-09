@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820">
+  <defs>
+    <style>
+      .t { font-family: Segoe UI, Arial, sans-serif; fill: #111; }
+      .h1 { font-size: 26px; font-weight: 700; }
+      .h2 { font-size: 16px; font-weight: 700; }
+      .p { font-size: 13px; }
+      .muted { fill: #555; }
+      .frame { fill: #fff; stroke: #222; stroke-width: 2; rx: 14; }
+      .panel { fill: #f7f7f7; stroke: #333; stroke-width: 2; rx: 10; }
+      .chip { fill: #eef3ff; stroke: #3b66ff; stroke-width: 1.5; rx: 10; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1400" height="820" fill="#ffffff"/>
+  <text x="40" y="56" class="t h1">方案2（桌面端）草图：三栏工作台（左资料 / 中对话 / 右笔记与卡片）</text>
+  <text x="40" y="86" class="t p muted">重点：像 IDE 一样学习；圈选→解释/成卡；右侧沉淀复习资产。</text>
+
+  <rect x="40" y="120" width="1320" height="640" class="frame"/>
+
+  <!-- Top bar -->
+  <rect x="70" y="150" width="1260" height="56" class="panel"/>
+  <text x="90" y="184" class="t p">顶栏：搜索 🔎　快捷：新对话 / 导入文章 / 开始复习 / 录音跟读</text>
+
+  <!-- Columns -->
+  <rect x="70" y="220" width="360" height="520" class="panel"/>
+  <text x="90" y="250" class="t h2">左侧：资料库</text>
+  <rect x="90" y="270" width="320" height="140" class="chip"/>
+  <text x="104" y="296" class="t p">收藏夹/标签</text>
+  <text x="104" y="322" class="t p muted">- 商务邮件</text>
+  <text x="104" y="346" class="t p muted">- 旅行口语</text>
+  <text x="104" y="370" class="t p muted">- 精听材料</text>
+  <rect x="90" y="430" width="320" height="290" class="chip"/>
+  <text x="104" y="456" class="t p">文章预览（高亮陌生词）</text>
+  <text x="104" y="482" class="t p muted">圈选 → 解释 / 加词卡 / 加句卡</text>
+  <text x="104" y="512" class="t p muted">…正文…</text>
+
+  <rect x="450" y="220" width="560" height="520" class="panel"/>
+  <text x="470" y="250" class="t h2">中间：Chat 教练</text>
+  <rect x="470" y="270" width="520" height="330" class="chip"/>
+  <text x="484" y="296" class="t p">主题：面试自我介绍</text>
+  <text x="484" y="324" class="t p muted">你：I worked at…</text>
+  <text x="484" y="352" class="t p muted">教练：✅建议…（纠错/改写/追问）</text>
+  <rect x="470" y="610" width="520" height="110" class="chip"/>
+  <text x="484" y="640" class="t p">输入框 + 语音ASR + 纠错开关</text>
+  <text x="484" y="668" class="t p muted">按钮：一键提取句卡 / 生成复习卡</text>
+
+  <rect x="1030" y="220" width="300" height="520" class="panel"/>
+  <text x="1050" y="250" class="t h2">右侧：笔记 / 卡片区</text>
+  <rect x="1050" y="270" width="260" height="170" class="chip"/>
+  <text x="1064" y="296" class="t p">今日要点（自动）</text>
+  <text x="1064" y="324" class="t p muted">- 时态混用</text>
+  <text x="1064" y="348" class="t p muted">- 更地道表达</text>
+  <rect x="1050" y="460" width="260" height="260" class="chip"/>
+  <text x="1064" y="486" class="t p">词卡 / 句卡 列表</text>
+  <text x="1064" y="514" class="t p muted">reservation　★★☆☆☆</text>
+  <text x="1064" y="538" class="t p muted">make a reservation</text>
+  <text x="1064" y="562" class="t p muted">…</text>
+</svg>

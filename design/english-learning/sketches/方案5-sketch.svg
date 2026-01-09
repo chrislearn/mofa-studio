@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <defs>
+    <style>
+      .t { font-family: Segoe UI, Arial, sans-serif; fill: #111; }
+      .h1 { font-size: 26px; font-weight: 700; }
+      .h2 { font-size: 16px; font-weight: 700; }
+      .p { font-size: 13px; }
+      .muted { fill: #555; }
+      .frame { fill: #fff; stroke: #222; stroke-width: 2; rx: 14; }
+      .panel { fill: #f7f7f7; stroke: #333; stroke-width: 2; rx: 10; }
+      .chip { fill: #eef3ff; stroke: #3b66ff; stroke-width: 1.5; rx: 10; }
+      .warn { fill: #fff7e6; stroke: #ff9b1a; stroke-width: 2; rx: 12; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1200" height="820" fill="#ffffff"/>
+  <text x="40" y="56" class="t h1">方案5（移动端）草图：SRS 复习中心（复习为默认入口）</text>
+  <text x="40" y="86" class="t p muted">重点：队列管理/卡片作答/错题解释（Chat）一体化。</text>
+
+  <rect x="60" y="120" width="520" height="640" class="frame"/>
+  <text x="80" y="152" class="t h2">屏幕 A：复习主页（队列）</text>
+  <rect x="80" y="170" width="480" height="110" class="panel"/>
+  <text x="100" y="204" class="t p">今日复习：到期 38　新卡 8</text>
+  <text x="100" y="232" class="t p muted">设置：新卡上限 10｜到期上限 50</text>
+  <rect x="80" y="295" width="480" height="190" class="panel"/>
+  <rect x="100" y="320" width="210" height="44" class="chip"/>
+  <text x="118" y="348" class="t p">开始到期复习（38）</text>
+  <rect x="330" y="320" width="210" height="44" class="chip"/>
+  <text x="350" y="348" class="t p">学习新卡（8）</text>
+  <rect x="100" y="376" width="440" height="44" class="chip"/>
+  <text x="118" y="404" class="t p">专项：冠词 10 / 介词 12</text>
+  <rect x="80" y="505" width="480" height="190" class="panel"/>
+  <text x="100" y="536" class="t p">复习热度图（日历）</text>
+  <text x="100" y="566" class="t p muted">▓▓░░▓▓▓░…</text>
+
+  <rect x="640" y="120" width="500" height="640" class="frame"/>
+  <text x="660" y="152" class="t h2">屏幕 B：卡片作答 + 错题解释</text>
+  <rect x="660" y="180" width="460" height="240" class="panel"/>
+  <text x="680" y="214" class="t p">卡片 12/38　模式：拼写听写</text>
+  <text x="680" y="246" class="t p muted">/ˌrez.əˈveɪ.ʃən/ 🔊</text>
+  <rect x="680" y="270" width="420" height="44" class="chip"/>
+  <text x="694" y="298" class="t p muted">输入拼写：____________</text>
+  <text x="680" y="340" class="t p muted">按钮：提示 / 不会 / 跳过 / 提交</text>
+
+  <rect x="660" y="440" width="460" height="260" class="warn"/>
+  <text x="680" y="474" class="t p">错题解释（Chat 面板）</text>
+  <text x="680" y="506" class="t p muted">你错了 2 次：reservation</text>
+  <text x="680" y="538" class="t p muted">错因：音节分段不熟 + 拼写规则</text>
+  <text x="680" y="570" class="t p muted">建议：re-ser-va-tion</text>
+  <rect x="680" y="608" width="220" height="36" class="chip"/>
+  <text x="704" y="632" class="t p">开始针对练习（1题）</text>
+</svg>

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <defs>
+    <style>
+      .t { font-family: Segoe UI, Arial, sans-serif; fill: #111; }
+      .h1 { font-size: 26px; font-weight: 700; }
+      .h2 { font-size: 16px; font-weight: 700; }
+      .p { font-size: 13px; }
+      .muted { fill: #555; }
+      .frame { fill: #fff; stroke: #222; stroke-width: 2; rx: 14; }
+      .panel { fill: #f7f7f7; stroke: #333; stroke-width: 2; rx: 10; }
+      .float { fill: #fff7e6; stroke: #ff9b1a; stroke-width: 2; rx: 12; }
+      .btn { fill: #eef3ff; stroke: #3b66ff; stroke-width: 1.5; rx: 10; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1200" height="820" fill="#ffffff"/>
+  <text x="40" y="56" class="t h1">方案4（移动端）草图：沉浸式对话 + 浮动即时词卡</text>
+  <text x="40" y="86" class="t p muted">重点：对话不中断；纠错点/新词自动浮出；收藏后立刻 15 秒快练。</text>
+
+  <rect x="60" y="120" width="520" height="640" class="frame"/>
+  <text x="80" y="152" class="t h2">屏幕 A：沉浸式 Chat</text>
+  <rect x="80" y="170" width="480" height="52" class="panel"/>
+  <text x="100" y="201" class="t p">主题：旅行　计时 02:10　结束 ⏹</text>
+  <rect x="80" y="235" width="480" height="360" class="panel"/>
+  <text x="100" y="265" class="t p">你：I want book a room.</text>
+  <text x="100" y="295" class="t p">教练：✅ I want to book a room.</text>
+  <text x="100" y="320" class="t p muted">want to + V</text>
+  <text x="100" y="360" class="t p">你：Is there any availability?</text>
+  <text x="100" y="390" class="t p">教练：更地道：Do you have any…</text>
+
+  <rect x="220" y="430" width="320" height="120" class="float"/>
+  <text x="240" y="462" class="t p">浮卡：availability</text>
+  <text x="240" y="488" class="t p muted">收藏后快练（15秒）：拼写/跟读/造句</text>
+  <rect x="240" y="506" width="86" height="30" class="btn"/>
+  <text x="258" y="526" class="t p">＋收藏</text>
+  <rect x="334" y="506" width="86" height="30" class="btn"/>
+  <text x="354" y="526" class="t p">快练</text>
+
+  <rect x="80" y="610" width="480" height="70" class="panel"/>
+  <text x="100" y="642" class="t p muted">输入框…　🎙️语音　➤发送　（长按句子=句卡）</text>
+
+  <rect x="640" y="120" width="500" height="640" class="frame"/>
+  <text x="660" y="152" class="t h2">屏幕 B：会话结束总结（自动）</text>
+  <rect x="660" y="180" width="460" height="520" class="panel"/>
+  <text x="680" y="220" class="t p">本次会话总结</text>
+  <text x="680" y="260" class="t p">✅ 掌握：book a room / reservation</text>
+  <text x="680" y="292" class="t p">⚠️ 易错：want to / articles</text>
+  <text x="680" y="330" class="t p">推荐下一步：</text>
+  <text x="700" y="356" class="t p muted">- 复习 12 张卡片</text>
+  <text x="700" y="382" class="t p muted">- 角色扮演进阶 4min</text>
+  <rect x="680" y="420" width="130" height="36" class="btn"/>
+  <text x="710" y="444" class="t p">去复习</text>
+  <rect x="820" y="420" width="150" height="36" class="btn"/>
+  <text x="846" y="444" class="t p">继续加练</text>
+  <rect x="980" y="420" width="140" height="36" class="btn"/>
+  <text x="1006" y="444" class="t p">保存脚本</text>
+</svg>

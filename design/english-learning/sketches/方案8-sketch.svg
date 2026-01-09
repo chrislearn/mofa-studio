@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <defs>
+    <style>
+      .t { font-family: Segoe UI, Arial, sans-serif; fill: #111; }
+      .h1 { font-size: 26px; font-weight: 700; }
+      .h2 { font-size: 16px; font-weight: 700; }
+      .p { font-size: 13px; }
+      .muted { fill: #555; }
+      .frame { fill: #fff; stroke: #222; stroke-width: 2; rx: 14; }
+      .panel { fill: #f7f7f7; stroke: #333; stroke-width: 2; rx: 10; }
+      .chip { fill: #eef3ff; stroke: #3b66ff; stroke-width: 1.5; rx: 10; }
+      .hl { fill: #fff7e6; stroke: #ff9b1a; stroke-width: 2; rx: 10; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1200" height="820" fill="#ffffff"/>
+  <text x="40" y="56" class="t h1">方案8（移动端）草图：现实输入（拍照/粘贴/网页/PDF → 自动切分学习）</text>
+  <text x="40" y="86" class="t p muted">重点：材料输入快；阅读时高亮陌生词；一键抽取词/句卡并生成练习。</text>
+
+  <rect x="60" y="120" width="520" height="640" class="frame"/>
+  <text x="80" y="152" class="t h2">屏幕 A：添加材料（入口）</text>
+  <rect x="80" y="180" width="480" height="520" class="panel"/>
+  <rect x="110" y="220" width="420" height="56" class="chip"/>
+  <text x="132" y="254" class="t p">📷 拍照识别（OCR）</text>
+  <rect x="110" y="290" width="420" height="56" class="chip"/>
+  <text x="132" y="324" class="t p">📋 粘贴文本</text>
+  <rect x="110" y="360" width="420" height="56" class="chip"/>
+  <text x="132" y="394" class="t p">🌐 保存网页</text>
+  <rect x="110" y="430" width="420" height="56" class="chip"/>
+  <text x="132" y="464" class="t p">📄 导入 PDF</text>
+
+  <rect x="640" y="120" width="500" height="640" class="frame"/>
+  <text x="660" y="152" class="t h2">屏幕 B：材料阅读（自动高亮 + 工具栏）</text>
+  <rect x="660" y="180" width="460" height="420" class="panel"/>
+  <text x="680" y="214" class="t p">材料：Email from client</text>
+  <text x="680" y="252" class="t p">We would like to</text>
+  <rect x="830" y="234" width="150" height="28" class="hl"/>
+  <text x="840" y="252" class="t p">reschedule</text>
+  <text x="680" y="288" class="t p">the meeting due to</text>
+  <rect x="860" y="270" width="190" height="28" class="hl"/>
+  <text x="870" y="288" class="t p">availability</text>
+  <text x="680" y="324" class="t p muted">点击高亮词 → 侧弹词卡（释义/发音/收藏）</text>
+
+  <rect x="660" y="620" width="460" height="80" class="panel"/>
+  <text x="680" y="652" class="t p">底部工具：</text>
+  <text x="680" y="676" class="t p muted">让教练解释这段｜抽取词卡｜生成练习</text>
+</svg>

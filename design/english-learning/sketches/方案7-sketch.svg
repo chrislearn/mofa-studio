@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <defs>
+    <style>
+      .t { font-family: Segoe UI, Arial, sans-serif; fill: #111; }
+      .h1 { font-size: 26px; font-weight: 700; }
+      .h2 { font-size: 16px; font-weight: 700; }
+      .p { font-size: 13px; }
+      .muted { fill: #555; }
+      .frame { fill: #fff; stroke: #222; stroke-width: 2; rx: 14; }
+      .panel { fill: #f7f7f7; stroke: #333; stroke-width: 2; rx: 10; }
+      .chip { fill: #eef3ff; stroke: #3b66ff; stroke-width: 1.5; rx: 10; }
+      .score { fill: #fff7e6; stroke: #ff9b1a; stroke-width: 2; rx: 12; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1200" height="820" fill="#ffffff"/>
+  <text x="40" y="56" class="t h1">方案7（移动端）草图：播客精听 + 影子跟读 + 句子库</text>
+  <text x="40" y="86" class="t p muted">重点：播放器 AB 循环/慢速/分句；选句→解释/收藏；跟读→ASR 评分。</text>
+
+  <rect x="60" y="120" width="520" height="640" class="frame"/>
+  <text x="80" y="152" class="t h2">屏幕 A：精听播放器（句子对齐）</text>
+  <rect x="80" y="170" width="480" height="520" class="panel"/>
+  <text x="100" y="206" class="t p">Podcast：Hotel Check-in（2:30）</text>
+  <rect x="100" y="226" width="440" height="46" class="chip"/>
+  <text x="116" y="254" class="t p">波形：███▆▅▆██▇▇▅▆███</text>
+  <rect x="100" y="282" width="440" height="44" class="chip"/>
+  <text x="116" y="310" class="t p">控制：⏪ ▶ ⏩　0.8x　AB循环</text>
+  <rect x="100" y="340" width="440" height="200" class="chip"/>
+  <text x="116" y="370" class="t p">字幕分句：</text>
+  <text x="116" y="398" class="t p muted">▸ I’d like to make a reservation.</text>
+  <text x="116" y="426" class="t p muted">  Do you have any availability?</text>
+  <text x="116" y="454" class="t p muted">  …</text>
+  <text x="100" y="574" class="t p muted">选中句子 → 解释 / 收藏句卡 / 跟读</text>
+
+  <rect x="640" y="120" width="500" height="640" class="frame"/>
+  <text x="660" y="152" class="t h2">屏幕 B：跟读评测</text>
+  <rect x="660" y="180" width="460" height="260" class="panel"/>
+  <text x="680" y="214" class="t p">跟读句：I’d like to make a reservation.</text>
+  <text x="680" y="248" class="t p muted">录音：●●●（评测中…）</text>
+  <rect x="680" y="272" width="420" height="44" class="score"/>
+  <text x="698" y="300" class="t p">得分：86 / 100</text>
+  <text x="680" y="352" class="t p muted">准确度 90｜流利度 82｜重音建议：reservation</text>
+  <rect x="660" y="470" width="460" height="230" class="panel"/>
+  <text x="680" y="504" class="t p">下一步</text>
+  <text x="680" y="536" class="t p muted">- 保存录音到训练记录</text>
+  <text x="680" y="562" class="t p muted">- 收藏句卡到句子库</text>
+  <text x="680" y="588" class="t p muted">- 生成替换/仿写练习</text>
+</svg>
