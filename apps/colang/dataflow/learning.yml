@@ -151,12 +151,15 @@ nodes:
   - id: mofa-audio-player
     path: dynamic
     inputs:
-      audio:
+      audio_teacher:
         source: doubao-tts/audio
         queue_size: 1000
     outputs:
-      - audio_complete
+      - buffer_status
       - status
+      - session_start
+      - audio_complete
+      - log
 
   # 聊天显示 - 显示对话历史和分析报告
   - id: mofa-chat-display

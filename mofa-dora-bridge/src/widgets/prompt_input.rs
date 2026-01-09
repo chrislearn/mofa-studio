@@ -21,7 +21,7 @@ use std::thread;
 use tracing::{debug, error, info, warn};
 
 /// Prompt input bridge - sends prompts to dora, receives responses
-pub struct PromptInputBridge {
+pub struct TextInputBridge {
     /// Node ID (e.g., "mofa-prompt-input")
     node_id: String,
     /// Current state
@@ -48,7 +48,7 @@ pub struct PromptInputBridge {
     worker_handle: Option<thread::JoinHandle<()>>,
 }
 
-impl PromptInputBridge {
+impl TextInputBridge {
     /// Create a new prompt input bridge
     pub fn new(node_id: &str) -> Self {
         let (event_tx, event_rx) = bounded(1000); // Increased from 100 to prevent blocking
@@ -323,7 +323,7 @@ impl PromptInputBridge {
     }
 }
 
-impl DoraBridge for PromptInputBridge {
+impl DoraBridge for TextInputBridge {
     fn node_id(&self) -> &str {
         &self.node_id
     }
@@ -426,7 +426,7 @@ impl DoraBridge for PromptInputBridge {
     }
 }
 
-impl Drop for PromptInputBridge {
+impl Drop for TextInputBridge {
     fn drop(&mut self) {
         let _ = self.disconnect();
     }

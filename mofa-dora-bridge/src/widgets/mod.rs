@@ -13,5 +13,5 @@ mod prompt_input;
 mod system_log;
 
 pub use audio_player::AudioPlayerBridge;
-pub use prompt_input::PromptInputBridge;
+pub use prompt_input::TextInputBridge;
 pub use system_log::SystemLogBridge;
