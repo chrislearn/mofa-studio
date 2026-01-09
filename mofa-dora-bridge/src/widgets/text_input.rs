@@ -1,7 +1,7 @@
 //! Prompt input bridge
 //!
-//! Connects to dora as `mofa-prompt-input` dynamic node.
-//! Sends user prompts to LLM nodes and receives:
+//! Connects to dora as `mofa-text-input` dynamic node.
+//! Sends user texts to LLM nodes and receives:
 //! - Text responses (streaming)
 //! - Status updates
 
@@ -20,9 +20,9 @@ use std::sync::Arc;
 use std::thread;
 use tracing::{debug, error, info, warn};
 
-/// Prompt input bridge - sends prompts to dora, receives responses
-pub struct PromptInputBridge {
-    /// Node ID (e.g., "mofa-prompt-input")
+/// Prompt input bridge - sends texts to dora, receives responses
+pub struct TextInputBridge {
+    /// Node ID (e.g., "mofa-text-input")
     node_id: String,
     /// Current state
     state: Arc<RwLock<BridgeState>>,
@@ -31,9 +31,9 @@ pub struct PromptInputBridge {
     /// Event receiver for widget
     event_receiver: Receiver<BridgeEvent>,
     /// Prompt sender from widget
-    prompt_sender: Sender<String>,
+    text_sender: Sender<String>,
     /// Prompt receiver for dora
-    prompt_receiver: Receiver<String>,
+    text_receiver: Receiver<String>,
     /// Control command sender from widget
     control_sender: Sender<ControlCommand>,
     /// Control command receiver for dora
@@ -48,11 +48,11 @@ pub struct PromptInputBridge {
     worker_handle: Option<thread::JoinHandle<()>>,
 }
 
-impl PromptInputBridge {
-    /// Create a new prompt input bridge
+impl TextInputBridge {
+    /// Create a new text input bridge
     pub fn new(node_id: &str) -> Self {
         let (event_tx, event_rx) = bounded(1000); // Increased from 100 to prevent blocking
-        let (prompt_tx, prompt_rx) = bounded(10);
+        let (text_tx, text_rx) = bounded(10);
         let (control_tx, control_rx) = bounded(10);
         let (chat_tx, chat_rx) = bounded(1000); // Increased from 100 to prevent blocking
 
@@ -61,8 +61,8 @@ impl PromptInputBridge {
             state: Arc::new(RwLock::new(BridgeState::Disconnected)),
             event_sender: event_tx,
             event_receiver: event_rx,
-            prompt_sender: prompt_tx,
-            prompt_receiver: prompt_rx,
+            text_sender: text_tx,
+            text_receiver: text_rx,
             control_sender: control_tx,
             control_receiver: control_rx,
             chat_sender: chat_tx,
@@ -77,10 +77,10 @@ impl PromptInputBridge {
         self.chat_receiver.clone()
     }
 
-    /// Send a prompt to dora (widget calls this)
-    pub fn send_prompt(&self, prompt: impl Into<String>) -> BridgeResult<()> {
-        self.prompt_sender
-            .send(prompt.into())
+    /// Send a text to dora (widget calls this)
+    pub fn send_text(&self, text: impl Into<String>) -> BridgeResult<()> {
+        self.text_sender
+            .send(text.into())
             .map_err(|_| BridgeError::ChannelSendError)
     }
 
@@ -96,12 +96,11 @@ impl PromptInputBridge {
         node_id: String,
         state: Arc<RwLock<BridgeState>>,
         event_sender: Sender<BridgeEvent>,
-        prompt_receiver: Receiver<String>,
-        control_receiver: Receiver<ControlCommand>,
+        text_receiver: Receiver<String>,
         chat_sender: Sender<ChatMessage>,
         stop_receiver: Receiver<()>,
     ) {
-        info!("Starting prompt input bridge event loop for {}", node_id);
+        info!("Starting text input bridge event loop for {}", node_id);
 
         // Initialize dora node
         let (mut node, mut events) =
@@ -129,17 +128,10 @@ impl PromptInputBridge {
                 break;
             }
 
-            // Check for prompts to send
-            while let Ok(prompt) = prompt_receiver.try_recv() {
-                if let Err(e) = Self::send_prompt_to_dora(&mut node, &prompt) {
-                    warn!("Failed to send prompt: {}", e);
-                }
-            }
-
-            // Check for control commands to send
-            while let Ok(cmd) = control_receiver.try_recv() {
-                if let Err(e) = Self::send_control_to_dora(&mut node, &cmd) {
-                    warn!("Failed to send control: {}", e);
+            // Check for texts to send
+            while let Ok(text) = text_receiver.try_recv() {
+                if let Err(e) = Self::send_text_to_dora(&mut node, &text) {
+                    warn!("Failed to send text: {}", e);
                 }
             }
 
@@ -296,34 +288,21 @@ impl PromptInputBridge {
         None
     }
 
-    /// Send prompt to dora via control output
-    /// The conference-controller expects JSON with "prompt" field
-    fn send_prompt_to_dora(node: &mut DoraNode, prompt: &str) -> BridgeResult<()> {
-        // Create JSON payload that conference-controller expects
+    /// Send text to dora via text output
+    fn send_text_to_dora(node: &mut DoraNode, text: &str) -> BridgeResult<()> {
         let payload = serde_json::json!({
-            "prompt": prompt
+            "text": text
         });
 
-        info!("Sending prompt to dora: {}", prompt);
+        info!("Sending text to dora: {}", text);
         let data = payload.to_string().into_arrow();
-        let output_id: DataId = "control".to_string().into(); // Use control output
-        node.send_output(output_id, Default::default(), data)
-            .map_err(|e| BridgeError::SendFailed(e.to_string()))
-    }
-
-    /// Send control command to dora
-    fn send_control_to_dora(node: &mut DoraNode, cmd: &ControlCommand) -> BridgeResult<()> {
-        let payload =
-            serde_json::to_string(cmd).map_err(|e| BridgeError::SendFailed(e.to_string()))?;
-
-        let data = payload.into_arrow();
-        let output_id: DataId = "control".to_string().into();
+        let output_id: DataId = "text".to_string().into();
         node.send_output(output_id, Default::default(), data)
             .map_err(|e| BridgeError::SendFailed(e.to_string()))
     }
 }
 
-impl DoraBridge for PromptInputBridge {
+impl DoraBridge for TextInputBridge {
     fn node_id(&self) -> &str {
         &self.node_id
     }
@@ -345,8 +324,7 @@ impl DoraBridge for PromptInputBridge {
         let node_id = self.node_id.clone();
         let state = Arc::clone(&self.state);
         let event_sender = self.event_sender.clone();
-        let prompt_receiver = self.prompt_receiver.clone();
-        let control_receiver = self.control_receiver.clone();
+        let text_receiver = self.text_receiver.clone();
         let chat_sender = self.chat_sender.clone();
 
         let handle = thread::spawn(move || {
@@ -354,8 +332,7 @@ impl DoraBridge for PromptInputBridge {
                 node_id,
                 state,
                 event_sender,
-                prompt_receiver,
-                control_receiver,
+                text_receiver,
                 chat_sender,
                 stop_rx,
             );
@@ -363,10 +340,28 @@ impl DoraBridge for PromptInputBridge {
 
         self.worker_handle = Some(handle);
 
-        // Wait briefly for connection
-        std::thread::sleep(std::time::Duration::from_millis(200));
+        // Wait for connection result (Connected or Error) with timeout
+        let timeout = std::time::Duration::from_secs(5);
+        let start = std::time::Instant::now();
 
-        Ok(())
+        loop {
+            match *self.state.read() {
+                BridgeState::Connected => return Ok(()),
+                BridgeState::Error => {
+                    if let Ok(BridgeEvent::Error(msg)) = self.event_receiver.try_recv() {
+                        return Err(BridgeError::ConnectionFailed(msg));
+                    }
+                    return Err(BridgeError::ConnectionFailed("Connection failed".to_string()));
+                }
+                _ => {}
+            }
+
+            if start.elapsed() >= timeout {
+                return Err(BridgeError::ConnectionFailed("Connection timeout".to_string()));
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
     }
 
     fn disconnect(&mut self) -> BridgeResult<()> {
@@ -388,10 +383,10 @@ impl DoraBridge for PromptInputBridge {
         }
 
         match (output_id, data) {
-            // Prompts are sent via the prompt channel, which sends to "control" output as JSON
-            ("prompt", DoraData::Text(text)) | ("control", DoraData::Text(text)) => {
-                info!("Queuing prompt for sending: {}", text);
-                self.prompt_sender
+            // Prompts are sent via the text channel, which sends to "control" output as JSON
+            ("text", DoraData::Text(text)) | ("control", DoraData::Text(text)) => {
+                info!("Queuing text for sending: {}", text);
+                self.text_sender
                     .send(text)
                     .map_err(|_| BridgeError::ChannelSendError)?;
             }
@@ -426,7 +421,7 @@ impl DoraBridge for PromptInputBridge {
     }
 }
 
-impl Drop for PromptInputBridge {
+impl Drop for TextInputBridge {
     fn drop(&mut self) {
         let _ = self.disconnect();
     }

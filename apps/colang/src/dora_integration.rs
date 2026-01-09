@@ -51,7 +51,7 @@ pub enum DoraCommand {
     /// Force stop the dataflow immediately (0s grace period)
     ForceStopDataflow,
 
-    /// Send text input to text-input node
+    /// Send text input to prompt-input node
     SendText { message: String },
     /// Send audio data to audio-input node (f32 samples, -1.0 to 1.0)
     SendAudio { data: Vec<f32>, sample_rate: u32 },

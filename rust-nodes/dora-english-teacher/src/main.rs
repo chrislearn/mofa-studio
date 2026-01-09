@@ -1,6 +1,6 @@
 // Dora Node: English Teacher
 // AI 英语老师 - 使用豆包 API 生成对话回复
-// 接收 doubao-asr/text 或 mofa-text-input/text
+// 接收 doubao-asr/text 或 mofa-prompt-input/text
 // 输出: AI 生成的英语对话回复
 
 use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}};

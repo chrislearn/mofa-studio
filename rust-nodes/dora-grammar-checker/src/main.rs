@@ -1,6 +1,6 @@
 // Dora Node: Grammar Checker
 // 语法检查器 - 使用豆包 API 检查语法和词汇
-// 接收 doubao-asr/text 或 mofa-text-input/text 进行分析
+// 接收 doubao-asr/text 或 mofa-prompt-input/text 进行分析
 // 输出 JSON 格式: {session_id, user_text, issues[], pronunciation_issues[]}
 
 use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}};

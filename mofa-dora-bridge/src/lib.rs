@@ -10,7 +10,7 @@
 //! MoFA App
 //!   ├── mofa-audio-player (dynamic node)
 //!   ├── mofa-system-log (dynamic node)
-//!   └── mofa-text-input (dynamic node)
+//!   └── mofa-prompt-input (dynamic node)
 //!          ↓
 //!     Dora Dataflow
 //! ```
@@ -66,7 +66,7 @@ impl MofaNodeType {
         match self {
             MofaNodeType::AudioPlayer => "mofa-audio-player",
             MofaNodeType::SystemLog => "mofa-system-log",
-            MofaNodeType::TextInput => "mofa-text-input",
+            MofaNodeType::TextInput => "mofa-prompt-input",
             MofaNodeType::MicInput => "mofa-mic-input",
             MofaNodeType::ChatViewer => "mofa-chat-viewer",
             MofaNodeType::ParticipantPanel => "mofa-participant-panel",
@@ -78,7 +78,7 @@ impl MofaNodeType {
         match node_id {
             "mofa-audio-player" => Some(MofaNodeType::AudioPlayer),
             "mofa-system-log" => Some(MofaNodeType::SystemLog),
-            "mofa-text-input" => Some(MofaNodeType::TextInput),
+            "mofa-prompt-input" => Some(MofaNodeType::TextInput),
             "mofa-mic-input" => Some(MofaNodeType::MicInput),
             "mofa-chat-viewer" => Some(MofaNodeType::ChatViewer),
             "mofa-participant-panel" => Some(MofaNodeType::ParticipantPanel),
