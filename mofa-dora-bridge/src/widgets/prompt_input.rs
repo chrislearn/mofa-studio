@@ -1,6 +1,6 @@
 //! Prompt input bridge
 //!
-//! Connects to dora as `mofa-prompt-input` dynamic node.
+//! Connects to dora as `mofa-text-input` dynamic node.
 //! Sends user prompts to LLM nodes and receives:
 //! - Text responses (streaming)
 //! - Status updates
@@ -22,7 +22,7 @@ use tracing::{debug, error, info, warn};
 
 /// Prompt input bridge - sends prompts to dora, receives responses
 pub struct TextInputBridge {
-    /// Node ID (e.g., "mofa-prompt-input")
+    /// Node ID (e.g., "mofa-text-input")
     node_id: String,
     /// Current state
     state: Arc<RwLock<BridgeState>>,

@@ -132,7 +132,7 @@ nodes:
       techer:
         source: techer/text
         queue_size: 1000
-      control: mofa-prompt-input/control
+      control: mofa-text-input/control
       session_start: mofa-audio-player/session_start
       buffer_status: mofa-audio-player/buffer_status
     outputs:
@@ -165,7 +165,7 @@ nodes:
       - audio_complete
       - log
 
-  - id: mofa-prompt-input
+  - id: mofa-text-input
     path: dynamic
     env:
       DORA_STUDY_MODE: true

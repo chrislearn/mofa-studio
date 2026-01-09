@@ -179,3 +179,8 @@ nodes:
         queue_size: 100
     outputs:
       - status
+
+
+  # System Log - aggregates logs from all nodes
+  - id: mofa-system-log
+    path: dynamic

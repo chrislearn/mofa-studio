@@ -10,7 +10,7 @@
 //! MoFA App
 //!   ├── mofa-audio-player (dynamic node)
 //!   ├── mofa-system-log (dynamic node)
-//!   └── mofa-prompt-input (dynamic node)
+//!   └── mofa-text-input (dynamic node)
 //!          ↓
 //!     Dora Dataflow
 //! ```
@@ -51,7 +51,7 @@ pub enum MofaNodeType {
     /// System log widget - receives logs from multiple nodes
     SystemLog,
     /// Prompt input widget - sends user prompts to LLM
-    PromptInput,
+    TextInput,
     /// Mic input widget - captures audio from microphone
     MicInput,
     /// Chat viewer widget - displays conversation
@@ -66,7 +66,7 @@ impl MofaNodeType {
         match self {
             MofaNodeType::AudioPlayer => "mofa-audio-player",
             MofaNodeType::SystemLog => "mofa-system-log",
-            MofaNodeType::PromptInput => "mofa-prompt-input",
+            MofaNodeType::TextInput => "mofa-text-input",
             MofaNodeType::MicInput => "mofa-mic-input",
             MofaNodeType::ChatViewer => "mofa-chat-viewer",
             MofaNodeType::ParticipantPanel => "mofa-participant-panel",
@@ -78,7 +78,7 @@ impl MofaNodeType {
         match node_id {
             "mofa-audio-player" => Some(MofaNodeType::AudioPlayer),
             "mofa-system-log" => Some(MofaNodeType::SystemLog),
-            "mofa-prompt-input" => Some(MofaNodeType::PromptInput),
+            "mofa-text-input" => Some(MofaNodeType::TextInput),
             "mofa-mic-input" => Some(MofaNodeType::MicInput),
             "mofa-chat-viewer" => Some(MofaNodeType::ChatViewer),
             "mofa-participant-panel" => Some(MofaNodeType::ParticipantPanel),

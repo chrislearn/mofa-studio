@@ -351,7 +351,7 @@ impl ColangScreen {
     /// Format bridge node ID to a display-friendly name
     /// e.g., "mofa-audio-player" -> "Audio Player"
     ///       "mofa-system-log" -> "System Log"
-    ///       "mofa-prompt-input" -> "Prompt Input"
+    ///       "mofa-text-input" -> "Prompt Input"
     pub(super) fn format_bridge_name(node_id: &str) -> String {
         // Remove "mofa-" prefix if present
         let name = node_id.strip_prefix("mofa-").unwrap_or(node_id);
