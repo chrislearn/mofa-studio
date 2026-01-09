@@ -41,7 +41,11 @@ nodes:
       DOUBAO_ACCESS_TOKEN: ${DOUBAO_ACCESS_TOKEN:-}
       LANGUAGE: en
       DATABASE_URL: sqlite:///d:/Works/chrislearn/mofa-studio/apps/colang/learning_companion.db
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
+      RUST_LOG: debug
+      DEBUG_ASR_STREAM: "true"
+      DEBUG_AUDIO_INPUT: "true"
+      DEBUG_TIMING: "true"
 
   # 用户输入合并器 - 合并文字输入和语音转文字
   - id: user-input-merger
@@ -55,7 +59,10 @@ nodes:
       - user_text     # 合并后的用户文字输入
       - status
     env:
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
+      RUST_LOG: debug
+      DEBUG_INPUT_MERGE: "true"
+      DEBUG_TIMING: "true"
 
   # ============ AI 语法/词汇检查层 ============
 
@@ -73,7 +80,11 @@ nodes:
       DOUBAO_API_KEY: ${DOUBAO_API_KEY:-}
       DOUBAO_MODEL: doubao-pro-32k
       DATABASE_URL: sqlite:///d:/Works/chrislearn/mofa-studio/apps/colang/learning_companion.db
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
+      RUST_LOG: debug
+      DEBUG_ANALYSIS: "true"
+      DEBUG_API_CALLS: "true"
+      DEBUG_TIMING: "true"
       ANALYSIS_PROMPT: |
         你是一个专业的英语教师，请分析以下用户输入的英语文本：
         1. 检查语法是否正确
@@ -96,7 +107,10 @@ nodes:
     env:
       DATABASE_URL: sqlite:///d:/Works/chrislearn/mofa-studio/apps/colang/learning_companion.db
       STORAGE_MODE: report  # 存储模式: report (存储分析报告)
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
+      RUST_LOG: debug
+      DEBUG_DB_OPS: "true"
+      DEBUG_TIMING: "true"
 
   # ============ AI 老师对话层 ============
 
@@ -115,7 +129,11 @@ nodes:
     env:
       MAAS_CONFIG_PATH: english_teacher_config.toml
       DOUBAO_API_KEY: ${DOUBAO_API_KEY:-}
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
+      RUST_LOG: debug
+      DEBUG_METRICS: "true"
+      DEBUG_API_CALLS: "true"
+      DEBUG_TIMING: "true"
 
   # 豆包 TTS - 文字转语音 (美式英语)
   - id: doubao-tts
@@ -132,13 +150,22 @@ nodes:
       DOUBAO_ACCESS_TOKEN: ${DOUBAO_ACCESS_TOKEN:-}
       VOICE_TYPE: BV700_V2_streaming   # 美式英语女声
       SPEED_RATIO: 1.0
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
+      RUST_LOG: debug
+      DEBUG_TTS_STREAM: "true"
+      DEBUG_AUDIO_OUTPUT: "true"
+      DEBUG_TIMING: "true"
 
   # ============ MoFA UI 显示层 ============
 
   # 音频播放器 - 播放 AI 回复语音
   - id: mofa-audio-player
     path: dynamic
+    env:
+      LOG_LEVEL: DEBUG
+      DEBUG_AUDIO_BUFFER: "true"
+      DEBUG_PLAYBACK: "true"
+      DEBUG_TIMING: "true"
     inputs:
       audio:
         source: doubao-tts/audio
@@ -155,6 +182,9 @@ nodes:
   # 聊天显示 - 显示对话历史和分析报告
   - id: mofa-chat-display
     path: dynamic
+    env:
+      LOG_LEVEL: DEBUG
+      DEBUG_UI_UPDATE: "true"
     inputs:
       user_text:
         source: user-input-merger/user_text
@@ -213,4 +243,8 @@ nodes:
       - log
     env:
       SESSION_MODE: learning
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
+      RUST_LOG: debug
+      DEBUG_SESSION_STATE: "true"
+      DEBUG_CONTROL_FLOW: "true"
+      DEBUG_TIMING: "true"
