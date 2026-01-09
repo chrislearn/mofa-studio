@@ -42,11 +42,11 @@ async fn main() -> Result<()> {
         .await
         .wrap_err("Failed to connect to database")?;
 
-    log::info!("Running database migrations...");
-    sqlx::migrate!("../../apps/colang/migrations")
-        .run(&pool)
-        .await
-        .wrap_err("Failed to run migrations")?;
+    // log::info!("Running database migrations...");
+    // sqlx::migrate!("../../apps/colang/migrations")
+    //     .run(&pool)
+    //     .await
+    //     .wrap_err("Failed to run migrations")?;
 
     let (mut node, mut events) = DoraNode::init_from_env()?;
     

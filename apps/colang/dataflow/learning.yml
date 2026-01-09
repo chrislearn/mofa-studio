@@ -74,7 +74,7 @@ nodes:
 
   # 学习数据写入器 - 专门负责将分析结果写入数据库
   - id: learning-db-writer
-    build: cargo build --manifest-path ../../../rust-nodes/dora-learning-db-writer/Cargo.toml
+    # build: cargo build --manifest-path ../../../rust-nodes/dora-learning-db-writer/Cargo.toml
     path: ../../../target/debug/dora-learning-db-writer
     inputs:
       analysis: grammar-checker/analysis
@@ -89,7 +89,7 @@ nodes:
 
   # 历史记录写入器 - 保存对话历史到数据库
   - id: history-db-writer
-    build: cargo build --manifest-path ../../../rust-nodes/dora-history-db-writer/Cargo.toml
+    # build: cargo build --manifest-path ../../../rust-nodes/dora-history-db-writer/Cargo.toml
     path: ../../../target/debug/dora-history-db-writer
     inputs:
       asr_text: doubao-asr/text             # ASR 转换的用户文字
@@ -108,7 +108,7 @@ nodes:
   # AI 英语老师 - 生成对话回复
   # 接收 doubao-asr/text 或 mofa-text-input/text
   - id: english-teacher
-    build: cargo build --manifest-path ../../../rust-nodes/dora-english-teacher/Cargo.toml
+    # build: cargo build --manifest-path ../../../rust-nodes/dora-english-teacher/Cargo.toml
     path: ../../../target/debug/dora-english-teacher
     inputs:
       asr_text: doubao-asr/text             # ASR 转换的文字
