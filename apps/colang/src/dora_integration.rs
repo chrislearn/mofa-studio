@@ -50,6 +50,7 @@ pub enum DoraCommand {
     StopDataflowWithGrace { grace_seconds: u64 },
     /// Force stop the dataflow immediately (0s grace period)
     ForceStopDataflow,
+
     /// Send text input to text-input node
     SendText { message: String },
     /// Send audio data to audio-input node (f32 samples, -1.0 to 1.0)

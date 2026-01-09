@@ -405,6 +405,7 @@ impl DoraIntegration {
                             }
                         }
                         mofa_dora_bridge::BridgeEvent::DataReceived { input_id, data, .. } => {
+                            log::info!("Bridge DataReceived: {}", node_id);
                             match data {
                                 mofa_dora_bridge::DoraData::Audio(audio) => {
                                     let _ = event_tx.send(DoraEvent::AudioReceived { data: audio });
