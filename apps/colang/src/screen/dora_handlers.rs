@@ -96,10 +96,10 @@ impl ColangScreen {
         for event in events {
             match event {
                 DoraEvent::DataflowStarted { dataflow_id } => {
-                    ::log::info!("Dataflow started: {}", dataflow_id);
+                    ::log::info!("Dataflow started2: {}", dataflow_id);
                     self.add_log(
                         cx,
-                        &format!("[INFO] [App] Dataflow started: {}", dataflow_id),
+                        &format!("[INFO] [App] Dataflow started2: {}", dataflow_id),
                     );
                     self.view
                         .mofa_hero(ids!(left_column.mofa_hero))

@@ -322,7 +322,7 @@ impl DoraIntegration {
 
                     DoraCommand::SendAudio { data, sample_rate } => {
                         if let Some(ref disp) = dispatcher {
-                            if let Some(bridge) = disp.get_bridge("mofa-audio-input") {
+                            if let Some(bridge) = disp.get_bridge("mofa-mic-input") {
                                 log::debug!("Sending audio via bridge: {} samples, {}Hz", data.len(), sample_rate);
                                 let audio_data = mofa_dora_bridge::data::AudioData {
                                     samples: data,
@@ -335,7 +335,7 @@ impl DoraIntegration {
                                     log::error!("Failed to send audio: {}", e);
                                 }
                             } else {
-                                log::warn!("mofa-audio-input bridge not found");
+                                log::warn!("mofa-mic-input bridge not found");
                             }
                         }
                     }
@@ -417,7 +417,7 @@ impl DoraIntegration {
                                 "mofa-audio-player" => state.write().audio_player_connected = true,
                                 "mofa-system-log" => state.write().system_log_connected = true,
                                 "mofa-text-input" => state.write().prompt_input_connected = true,
-                                "mofa-audio-input" => { /* audio input connected */ }
+                                "mofa-mic-input" => { /* audio input connected */ }
                                 _ => {}
                             }
                         }
@@ -430,7 +430,7 @@ impl DoraIntegration {
                                 "mofa-audio-player" => state.write().audio_player_connected = false,
                                 "mofa-system-log" => state.write().system_log_connected = false,
                                 "mofa-text-input" => state.write().prompt_input_connected = false,
-                                "mofa-audio-input" => { /* audio input disconnected */ }
+                                "mofa-mic-input" => { /* audio input disconnected */ }
                                 _ => {}
                             }
                         }
