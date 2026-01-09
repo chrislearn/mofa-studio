@@ -1,13 +1,12 @@
 // Dora Node: Conversation Analyzer
 // Analyzes user speech for pronunciation, grammar, and vocabulary issues
+// 只负责调用 AI API 分析，不操作数据库
 
 use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}};
 use eyre::{Context, Result};
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::sqlite::SqlitePool;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AsrOutput {
@@ -36,10 +35,17 @@ struct TextIssue {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct AnalysisResult {
+struct PronunciationIssue {
+    word: String,
+    confidence: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct AnalysisOutput {
     session_id: String,
-    issues_found: usize,
-    new_words_added: usize,
+    user_text: String,
+    issues: Vec<TextIssue>,
+    pronunciation_issues: Vec<PronunciationIssue>,
 }
 
 #[tokio::main]
@@ -51,11 +57,6 @@ async fn main() -> Result<()> {
     
     let model = std::env::var("DOUBAO_MODEL")
         .unwrap_or_else(|_| "doubao-pro-32k".to_string());
-    
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite://learning_companion.db".to_string());
-    
-    let pool = SqlitePool::connect(&database_url).await?;
 
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(30))
@@ -63,7 +64,8 @@ async fn main() -> Result<()> {
 
     let (mut node, mut events) = DoraNode::init_from_env()?;
     
-    log::info!("Conversation Analyzer node started");
+    log::info!("Conversation Analyzer node started (API only, no DB)");
+
 
     while let Some(event) = events.recv() {
         match event {
@@ -92,69 +94,38 @@ async fn main() -> Result<()> {
                                         Ok(issues) => {
                                             log::info!("Found {} issues", issues.len());
                                             
-                                            // Get conversation ID
-                                            if let Ok(Some(conv_id)) = get_latest_conversation_id(
-                                                &pool,
-                                                &session_id
-                                            ).await {
-                                                // Store issues in database
-                                                let mut new_words = 0;
-                                                
-                                                for issue in &issues {
-                                                    // Save annotation
-                                                    if let Err(e) = save_annotation(
-                                                        &pool,
-                                                        conv_id,
-                                                        issue
-                                                    ).await {
-                                                        log::error!("Failed to save annotation: {}", e);
-                                                        continue;
-                                                    }
-                                                    
-                                                    // Extract words and save to issue_words
-                                                    if let Err(e) = save_issue_word(
-                                                        &pool,
-                                                        issue,
-                                                        &asr_result.text
-                                                    ).await {
-                                                        log::error!("Failed to save issue word: {}", e);
-                                                    } else {
-                                                        new_words += 1;
-                                                    }
+                                            // Collect pronunciation issues (low confidence words)
+                                            let mut pronunciation_issues = Vec::new();
+                                            for word_info in &asr_result.words {
+                                                if word_info.confidence < 0.7 {
+                                                    log::info!(
+                                                        "Low confidence word detected: {} ({})",
+                                                        word_info.word,
+                                                        word_info.confidence
+                                                    );
+                                                    pronunciation_issues.push(PronunciationIssue {
+                                                        word: word_info.word.clone(),
+                                                        confidence: word_info.confidence,
+                                                    });
                                                 }
-                                                
-                                                let result = AnalysisResult {
-                                                    session_id: session_id.clone(),
-                                                    issues_found: issues.len(),
-                                                    new_words_added: new_words,
-                                                };
-                                                
-                                                let output_str = serde_json::to_string(&result)?;
-                                                let output_array = StringArray::from(vec![output_str.as_str()]);
-                                                node.send_output("analysis".to_string().into(), metadata.parameters.clone(), output_array)?;
                                             }
+                                            
+                                            // Create output with all analysis results
+                                            let output = AnalysisOutput {
+                                                session_id: session_id.clone(),
+                                                user_text: asr_result.text.clone(),
+                                                issues,
+                                                pronunciation_issues,
+                                            };
+                                            
+                                            let output_str = serde_json::to_string(&output)?;
+                                            let output_array = StringArray::from(vec![output_str.as_str()]);
+                                            node.send_output("analysis".to_string().into(), metadata.parameters.clone(), output_array)?;
+                                            
+                                            log::info!("Analysis complete, sent to output");
                                         }
                                         Err(e) => {
                                             log::error!("Analysis failed: {}", e);
-                                        }
-                                    }
-                                    
-                                    // Analyze pronunciation (low confidence words)
-                                    for word_info in &asr_result.words {
-                                        if word_info.confidence < 0.7 {
-                                            log::info!(
-                                                "Low confidence word detected: {} ({})",
-                                                word_info.word,
-                                                word_info.confidence
-                                            );
-                                            
-                                            if let Err(e) = save_pronunciation_issue(
-                                                &pool,
-                                                &word_info.word,
-                                                &asr_result.text
-                                            ).await {
-                                                log::error!("Failed to save pronunciation issue: {}", e);
-                                            }
                                         }
                                     }
                                 }
@@ -267,138 +238,4 @@ async fn analyze_text(
             Ok(serde_json::from_str(cleaned).unwrap_or_else(|_| Vec::new()))
         }
     }
-}
-
-async fn get_latest_conversation_id(
-    pool: &SqlitePool,
-    session_id: &str,
-) -> Result<Option<i64>> {
-    let result = sqlx::query_scalar::<_, i64>(
-        r#"
-        SELECT id FROM conversations 
-        WHERE session_id = ? AND speaker = 'user'
-        ORDER BY created_at DESC 
-        LIMIT 1
-        "#
-    )
-    .bind(session_id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(result)
-}
-
-async fn save_annotation(
-    pool: &SqlitePool,
-    conversation_id: i64,
-    issue: &TextIssue,
-) -> Result<()> {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)?
-        .as_secs() as i64;
-    
-    let annotation_type = match issue.issue_type.as_str() {
-        "grammar" => "grammar_error",
-        "word_choice" => "word_choice",
-        "suggestion" => "suggestion",
-        _ => "correction",
-    };
-
-    sqlx::query(
-        r#"
-        INSERT INTO conversation_annotations (
-            conversation_id, annotation_type, original_text, suggested_text,
-            description, severity, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        "#
-    )
-    .bind(conversation_id)
-    .bind(annotation_type)
-    .bind(&issue.original)
-    .bind(&issue.suggested)
-    .bind(&issue.description)
-    .bind(&issue.severity)
-    .bind(now)
-    .execute(pool)
-    .await?;
-
-    Ok(())
-}
-
-async fn save_issue_word(
-    pool: &SqlitePool,
-    issue: &TextIssue,
-    context: &str,
-) -> Result<()> {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)?
-        .as_secs() as i64;
-    
-    // Extract words from original text
-    let words: Vec<&str> = issue.original.split_whitespace().collect();
-    
-    let issue_type_db = match issue.issue_type.as_str() {
-        "grammar" => "grammar",
-        "word_choice" => "usage",
-        _ => "unfamiliar",
-    };
-
-    for word in words {
-        let clean_word = word.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
-        
-        if clean_word.len() < 2 {
-            continue;
-        }
-
-        sqlx::query(
-            r#"
-            INSERT INTO issue_words (
-                word, issue_type, issue_description, created_at, pick_count,
-                review_interval_days, difficulty_level, context
-            ) VALUES (?, ?, ?, ?, 0, 1, 3, ?)
-            ON CONFLICT(word, issue_type) DO UPDATE SET
-                issue_description = excluded.issue_description,
-                context = excluded.context
-            "#
-        )
-        .bind(&clean_word)
-        .bind(issue_type_db)
-        .bind(&issue.description)
-        .bind(now)
-        .bind(context)
-        .execute(pool)
-        .await?;
-    }
-
-    Ok(())
-}
-
-async fn save_pronunciation_issue(
-    pool: &SqlitePool,
-    word: &str,
-    context: &str,
-) -> Result<()> {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)?
-        .as_secs() as i64;
-    
-    let clean_word = word.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
-
-    sqlx::query(
-        r#"
-        INSERT INTO issue_words (
-            word, issue_type, issue_description, created_at, pick_count,
-            review_interval_days, difficulty_level, context
-        ) VALUES (?, 'pronunciation', 'Low confidence in pronunciation', ?, 0, 1, 2, ?)
-        ON CONFLICT(word, issue_type) DO UPDATE SET
-            difficulty_level = difficulty_level + 1
-        "#
-    )
-    .bind(&clean_word)
-    .bind(now)
-    .bind(context)
-    .execute(pool)
-    .await?;
-
-    Ok(())
 }

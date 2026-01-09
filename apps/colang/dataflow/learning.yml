@@ -66,47 +66,58 @@ nodes:
 
   # ============ AI 语法/词汇检查层 ============
 
-  # 语法检查器 - 使用豆包 API 检查语法和词汇
+  # 语法检查器 - 使用豆包 API 检查语法和词汇（仅负责分析，不操作数据库）
   - id: grammar-checker
     build: cargo build --manifest-path ../../../node-hub/dora-conversation-analyzer/Cargo.toml
     path: ../../../node-hub/dora-conversation-analyzer/target/release/dora-conversation-analyzer
     inputs:
       user_text: user-input-merger/user_text
     outputs:
-      - analysis      # 分析报告 (JSON: 语法错误、词汇问题、改进建议)
+      - analysis      # 分析报告 (JSON: session_id, user_text, issues, pronunciation_issues)
       - status
       - log
     env:
       DOUBAO_API_KEY: ${DOUBAO_API_KEY:-}
       DOUBAO_MODEL: doubao-pro-32k
-      DATABASE_URL: sqlite://learning_companion.db
       LOG_LEVEL: DEBUG
       RUST_LOG: debug
       DEBUG_ANALYSIS: "true"
       DEBUG_API_CALLS: "true"
       DEBUG_TIMING: "true"
-      ANALYSIS_PROMPT: |
-        你是一个专业的英语教师，请分析以下用户输入的英语文本：
-        1. 检查语法是否正确
-        2. 检查用词是否恰当
-        3. 对于每个错误，提供详细讲解和正确用法示例
-        4. 返回 JSON 格式的分析报告
 
   # ============ 数据存储层 ============
 
-  # 学习报告存储器 - 将分析结果存入数据库
-  - id: report-storage
-    build: cargo build --manifest-path ../../../node-hub/dora-word-selector/Cargo.toml
-    path: ../../../node-hub/dora-word-selector/target/release/dora-word-selector
+  # 学习数据写入器 - 专门负责将分析结果写入数据库
+  - id: learning-db-writer
+    build: cargo build --manifest-path ../../../node-hub/dora-learning-db-writer/Cargo.toml
+    path: ../../../node-hub/dora-learning-db-writer/target/release/dora-learning-db-writer
     inputs:
       analysis: grammar-checker/analysis
-      control: session-controller/control
     outputs:
+      - result        # 存储结果 (success, issues_stored, pronunciation_issues_stored)
       - status
       - log
     env:
       DATABASE_URL: sqlite://learning_companion.db
-      STORAGE_MODE: report  # 存储模式: report (存储分析报告)
+      LOG_LEVEL: DEBUG
+      RUST_LOG: debug
+      DEBUG_DB_OPS: "true"
+      DEBUG_TIMING: "true"
+
+  # 学习数据读取器 - 专门负责从数据库读取需要复习的词汇
+  - id: learning-db-reader
+    build: cargo build --manifest-path ../../../node-hub/dora-learning-db-reader/Cargo.toml
+    path: ../../../node-hub/dora-learning-db-reader/target/release/dora-learning-db-reader
+    inputs:
+      trigger: session-controller/control
+    outputs:
+      - selected_words  # 选择的词汇列表 (JSON: words, word_details, session_id)
+      - status
+      - log
+    env:
+      DATABASE_URL: sqlite://learning_companion.db
+      MIN_WORDS: 20
+      MAX_WORDS: 30
       LOG_LEVEL: DEBUG
       RUST_LOG: debug
       DEBUG_DB_OPS: "true"
@@ -195,6 +206,12 @@ nodes:
       analysis:
         source: grammar-checker/analysis
         queue_size: 100
+      db_result:
+        source: learning-db-writer/result
+        queue_size: 100
+      selected_words:
+        source: learning-db-reader/selected_words
+        queue_size: 100
     outputs:
       - status
 
@@ -218,10 +235,14 @@ nodes:
         source: doubao-tts/log
         queue_size: 1000
       tts_status: doubao-tts/status
-      storage_log:
-        source: report-storage/log
+      db_writer_log:
+        source: learning-db-writer/log
         queue_size: 1000
-      storage_status: report-storage/status
+      db_writer_status: learning-db-writer/status
+      db_reader_log:
+        source: learning-db-reader/log
+        queue_size: 1000
+      db_reader_status: learning-db-reader/status
       audio_player_log:
         source: mofa-audio-player/log
         queue_size: 1000
