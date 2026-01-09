@@ -578,10 +578,28 @@ impl DoraBridge for AudioPlayerBridge {
 
         self.worker_handle = Some(handle);
 
-        // Wait briefly for connection
-        std::thread::sleep(std::time::Duration::from_millis(200));
+        // Wait for connection result (Connected or Error) with timeout
+        let timeout = std::time::Duration::from_secs(5);
+        let start = std::time::Instant::now();
 
-        Ok(())
+        loop {
+            match *self.state.read() {
+                BridgeState::Connected => return Ok(()),
+                BridgeState::Error => {
+                    if let Ok(BridgeEvent::Error(msg)) = self.event_receiver.try_recv() {
+                        return Err(BridgeError::ConnectionFailed(msg));
+                    }
+                    return Err(BridgeError::ConnectionFailed("Connection failed".to_string()));
+                }
+                _ => {}
+            }
+
+            if start.elapsed() >= timeout {
+                return Err(BridgeError::ConnectionFailed("Connection timeout".to_string()));
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
     }
 
     fn disconnect(&mut self) -> BridgeResult<()> {

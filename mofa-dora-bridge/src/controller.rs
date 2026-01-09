@@ -138,7 +138,7 @@ impl DataflowController {
             }
             _ => {
                 info!("Starting dora daemon...");
-                let child = Command::new("dora")
+                let _child = Command::new("dora")
                     .arg("up")
                     .stdout(Stdio::null())
                     .stderr(Stdio::null())
@@ -147,11 +147,34 @@ impl DataflowController {
                         BridgeError::StartFailed(format!("Failed to start daemon: {}", e))
                     })?;
 
-                self.daemon_process = Some(child);
+                // Note: dora up launches its own persistent daemon process; no handle to store
 
-                // Wait for daemon to be ready
-                std::thread::sleep(Duration::from_millis(1000));
-                Ok(())
+                // Wait for daemon to be ready with retries
+                const MAX_ATTEMPTS: usize = 10;
+                let retry_delay = Duration::from_millis(500);
+
+                for attempt in 1..=MAX_ATTEMPTS {
+                    std::thread::sleep(retry_delay);
+
+                    let check = Command::new("dora")
+                        .arg("list")
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .status();
+
+                    if let Ok(s) = check {
+                        if s.success() {
+                            info!("Dora daemon ready after {} attempt(s)", attempt);
+                            return Ok(());
+                        }
+                    }
+
+                    debug!("Waiting for dora daemon (attempt {}/{})", attempt, MAX_ATTEMPTS);
+                }
+
+                Err(BridgeError::StartFailed(
+                    "Dora daemon failed to start within timeout".to_string(),
+                ))
             }
         }
     }
