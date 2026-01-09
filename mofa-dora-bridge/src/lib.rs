@@ -51,6 +51,8 @@ pub enum MofaNodeType {
     /// System log widget - receives logs from multiple nodes
     SystemLog,
     /// Prompt input widget - sends user prompts to LLM
+    PromptInput,
+    /// Text input widget - sends user prompts to LLM
     TextInput,
     /// Mic input widget - captures audio from microphone
     MicInput,
@@ -66,7 +68,8 @@ impl MofaNodeType {
         match self {
             MofaNodeType::AudioPlayer => "mofa-audio-player",
             MofaNodeType::SystemLog => "mofa-system-log",
-            MofaNodeType::TextInput => "mofa-prompt-input",
+            MofaNodeType::TextInput => "mofa-text-input",
+            MofaNodeType::PromptInput => "mofa-prompt-input",
             MofaNodeType::MicInput => "mofa-mic-input",
             MofaNodeType::ChatViewer => "mofa-chat-viewer",
             MofaNodeType::ParticipantPanel => "mofa-participant-panel",
@@ -78,7 +81,8 @@ impl MofaNodeType {
         match node_id {
             "mofa-audio-player" => Some(MofaNodeType::AudioPlayer),
             "mofa-system-log" => Some(MofaNodeType::SystemLog),
-            "mofa-prompt-input" => Some(MofaNodeType::TextInput),
+            "mofa-text-input" => Some(MofaNodeType::TextInput),
+            "mofa-prompt-input" => Some(MofaNodeType::PromptInput),
             "mofa-mic-input" => Some(MofaNodeType::MicInput),
             "mofa-chat-viewer" => Some(MofaNodeType::ChatViewer),
             "mofa-participant-panel" => Some(MofaNodeType::ParticipantPanel),

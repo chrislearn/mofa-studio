@@ -27,7 +27,7 @@ pub struct DoraState {
     /// Connection states for each bridge
     pub audio_player_connected: bool,
     pub system_log_connected: bool,
-    pub prompt_input_connected: bool,
+    pub text_input_connected: bool,
     /// Audio buffer fill percentage
     pub buffer_fill: f64,
     /// Last received chat messages
@@ -416,7 +416,7 @@ impl DoraIntegration {
                             match node_id.as_str() {
                                 "mofa-audio-player" => state.write().audio_player_connected = true,
                                 "mofa-system-log" => state.write().system_log_connected = true,
-                                "mofa-text-input" => state.write().prompt_input_connected = true,
+                                "mofa-text-input" => state.write().text_input_connected = true,
                                 "mofa-mic-input" => { /* audio input connected */ }
                                 _ => {}
                             }
@@ -429,7 +429,7 @@ impl DoraIntegration {
                             match node_id.as_str() {
                                 "mofa-audio-player" => state.write().audio_player_connected = false,
                                 "mofa-system-log" => state.write().system_log_connected = false,
-                                "mofa-text-input" => state.write().prompt_input_connected = false,
+                                "mofa-text-input" => state.write().text_input_connected = false,
                                 "mofa-mic-input" => { /* audio input disconnected */ }
                                 _ => {}
                             }
