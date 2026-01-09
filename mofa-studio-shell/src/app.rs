@@ -988,25 +988,17 @@ impl App {
         }
 
         let user_btn_x = window_width - 80.0;
-        self.ui.view(ids!(user_btn_overlay)).apply_over(
-            cx,
-            live! {
-                abs_pos: (dvec2(user_btn_x, 10.0))
-            },
-        );
+        self.ui.view(ids!(user_btn_overlay)).apply_over(cx, live!{
+            abs_pos: (dvec2(user_btn_x, 10.0))
+        });
 
         let user_menu_x = window_width - 150.0;
-        self.ui.view(ids!(user_menu)).apply_over(
-            cx,
-            live! {
-                abs_pos: (dvec2(user_menu_x, 55.0))
-            },
-        );
+        self.ui.view(ids!(user_menu)).apply_over(cx, live!{
+            abs_pos: (dvec2(user_menu_x, 55.0))
+        });
 
         let max_scroll_height = (window_height - 230.0).max(200.0);
-        self.ui
-            .sidebar(ids!(sidebar_menu_overlay.sidebar_content))
-            .set_max_scroll_height(max_scroll_height);
+        self.ui.sidebar(ids!(sidebar_menu_overlay.sidebar_content)).set_max_scroll_height(max_scroll_height);
 
         self.ui.redraw(cx);
     }
@@ -1059,21 +1051,13 @@ impl App {
 
     /// Handle user menu button clicks
     fn handle_user_menu_clicks(&mut self, cx: &mut Cx, actions: &[Action]) {
-        if self
-            .ui
-            .button(ids!(user_menu.menu_profile_btn))
-            .clicked(actions)
-        {
+        if self.ui.button(ids!(user_menu.menu_profile_btn)).clicked(actions) {
             self.user_menu_open = false;
             self.ui.view(ids!(user_menu)).set_visible(cx, false);
             self.open_or_switch_tab(cx, TabId::Profile);
         }
 
-        if self
-            .ui
-            .button(ids!(user_menu.menu_settings_btn))
-            .clicked(actions)
-        {
+        if self.ui.button(ids!(user_menu.menu_settings_btn)).clicked(actions) {
             self.user_menu_open = false;
             self.ui.view(ids!(user_menu)).set_visible(cx, false);
             self.open_or_switch_tab(cx, TabId::Settings);
@@ -1086,25 +1070,15 @@ impl App {
 
         match event.hits(cx, theme_btn.area()) {
             Hit::FingerHoverIn(_) => {
-                self.ui
-                    .view(ids!(body.dashboard_base.header.theme_toggle))
-                    .apply_over(
-                        cx,
-                        live! {
-                            draw_bg: { hover: 1.0 }
-                        },
-                    );
+                self.ui.view(ids!(body.dashboard_base.header.theme_toggle)).apply_over(cx, live!{
+                    draw_bg: { hover: 1.0 }
+                });
                 self.ui.redraw(cx);
             }
             Hit::FingerHoverOut(_) => {
-                self.ui
-                    .view(ids!(body.dashboard_base.header.theme_toggle))
-                    .apply_over(
-                        cx,
-                        live! {
-                            draw_bg: { hover: 0.0 }
-                        },
-                    );
+                self.ui.view(ids!(body.dashboard_base.header.theme_toggle)).apply_over(cx, live!{
+                    draw_bg: { hover: 0.0 }
+                });
                 self.ui.redraw(cx);
             }
             Hit::FingerUp(_) => {
@@ -1125,12 +1099,8 @@ impl App {
     /// Update the theme toggle icon based on current mode
     fn update_theme_toggle_icon(&mut self, cx: &mut Cx) {
         let is_dark = self.dark_mode;
-        self.ui
-            .view(ids!(body.dashboard_base.header.theme_toggle.sun_icon))
-            .set_visible(cx, !is_dark);
-        self.ui
-            .view(ids!(body.dashboard_base.header.theme_toggle.moon_icon))
-            .set_visible(cx, is_dark);
+        self.ui.view(ids!(body.dashboard_base.header.theme_toggle.sun_icon)).set_visible(cx, !is_dark);
+        self.ui.view(ids!(body.dashboard_base.header.theme_toggle.moon_icon)).set_visible(cx, is_dark);
         self.ui.redraw(cx);
     }
 }
@@ -1536,12 +1506,9 @@ impl App {
             -SIDEBAR_WIDTH * eased
         };
 
-        self.ui.view(ids!(sidebar_menu_overlay)).apply_over(
-            cx,
-            live! {
-                abs_pos: (dvec2(x, 52.0))
-            },
-        );
+        self.ui.view(ids!(sidebar_menu_overlay)).apply_over(cx, live!{
+            abs_pos: (dvec2(x, 52.0))
+        });
 
         if progress >= 1.0 {
             self.sidebar_animating = false;
@@ -1563,18 +1530,11 @@ impl App {
         self.sidebar_animating = true;
         self.sidebar_animation_start = Cx::time_now();
         self.sidebar_slide_in = true;
-        self.ui.view(ids!(sidebar_menu_overlay)).apply_over(
-            cx,
-            live! {
-                abs_pos: (dvec2(-250.0, 52.0))
-            },
-        );
-        self.ui
-            .view(ids!(sidebar_menu_overlay))
-            .set_visible(cx, true);
-        self.ui
-            .sidebar(ids!(sidebar_menu_overlay.sidebar_content))
-            .restore_selection_state(cx);
+        self.ui.view(ids!(sidebar_menu_overlay)).apply_over(cx, live!{
+            abs_pos: (dvec2(-250.0, 52.0))
+        });
+        self.ui.view(ids!(sidebar_menu_overlay)).set_visible(cx, true);
+        self.ui.sidebar(ids!(sidebar_menu_overlay.sidebar_content)).restore_selection_state(cx);
         self.ui.redraw(cx);
     }
 
