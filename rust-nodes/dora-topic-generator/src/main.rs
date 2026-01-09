@@ -1,7 +1,7 @@
 // Dora Node: Topic Generator
 // Generates conversation topics using Doubao API based on selected words
 
-use dora_node_api::{DoraNode, Event};
+use dora_node_api::{DoraNode, Event, arrow::array::StringArray};
 use eyre::{Context, Result};
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
@@ -46,12 +46,19 @@ async fn main() -> Result<()> {
 
     while let Some(event) = events.recv() {
         match event {
-            Event::Input { id, data, .. } => {
+            Event::Input { id, data, metadata } => {
                 match id.as_str() {
                     "selected_words" => {
                         log::info!("Received word selection");
                         
-                        match serde_json::from_slice::<WordSelection>(&data) {
+                        // Extract bytes from Arrow data
+                        let raw_data = extract_bytes(&data);
+                        if raw_data.is_empty() {
+                            log::warn!("Empty data received");
+                            continue;
+                        }
+                        
+                        match serde_json::from_slice::<WordSelection>(&raw_data) {
                             Ok(selection) => {
                                 log::info!(
                                     "Generating topic for {} words in session {}",
@@ -67,8 +74,9 @@ async fn main() -> Result<()> {
                                             target_words: selection.words,
                                         };
                                         
-                                        let output_json = serde_json::to_vec(&output)?;
-                                        node.send_output("topic", Default::default(), output_json)?;
+                                        let output_str = serde_json::to_string(&output)?;
+                                        let output_array = StringArray::from(vec![output_str.as_str()]);
+                                        node.send_output("topic".into(), metadata.parameters.clone(), output_array)?;
                                         
                                         log::info!("Generated topic: {}", topic);
                                     }
@@ -90,7 +98,7 @@ async fn main() -> Result<()> {
             Event::InputClosed { id } => {
                 log::info!("Input {} closed", id);
             }
-            Event::Stop => {
+            Event::Stop(_) => {
                 log::info!("Received stop signal");
                 break;
             }
@@ -99,6 +107,21 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Extract bytes from ArrowData
+fn extract_bytes(data: &dora_node_api::ArrowData) -> Vec<u8> {
+    use dora_node_api::arrow::array::{Array, UInt8Array};
+    
+    if let Some(array) = data.0.as_any().downcast_ref::<StringArray>() {
+        if array.len() > 0 {
+            return array.value(0).as_bytes().to_vec();
+        }
+    }
+    if let Some(array) = data.0.as_any().downcast_ref::<UInt8Array>() {
+        return array.values().to_vec();
+    }
+    Vec::new()
 }
 
 async fn generate_topic(

@@ -99,7 +99,7 @@ async fn main() -> Result<()> {
                                         asr_result.session_id.as_deref(),
                                         Some(&asr_result.words),
                                         &mut node,
-                                        &metadata.parameters,
+                                        &metadata,
                                     ).await?;
                                 }
                                 Err(e) => {
@@ -125,7 +125,7 @@ async fn main() -> Result<()> {
                                 None,
                                 None,
                                 &mut node,
-                                &metadata.parameters,
+                                &metadata,
                             ).await?;
                         }
                     }
@@ -157,7 +157,7 @@ async fn process_text(
     session_id: Option<&str>,
     words: Option<&Vec<WordTiming>>,
     node: &mut DoraNode,
-    parameters: &std::sync::Arc<serde_json::Value>,
+    metadata: &dora_node_api::Metadata,
 ) -> Result<()> {
     let session = session_id
         .map(|s| s.to_string())
@@ -213,8 +213,8 @@ async fn process_text(
     let output_array = StringArray::from(vec![output_str.as_str()]);
     
     node.send_output(
-        "analysis".to_string().into(),
-        parameters.clone(),
+        "analysis".into(),
+        metadata.parameters.clone(),
         output_array,
     )?;
     
@@ -227,7 +227,7 @@ async fn process_text(
     });
     
     let status_array = StringArray::from(vec![status.to_string().as_str()]);
-    node.send_output("status".to_string().into(), parameters.clone(), status_array)?;
+    node.send_output("status".into(), metadata.parameters.clone(), status_array)?;
     
     Ok(())
 }

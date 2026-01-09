@@ -101,7 +101,7 @@ async fn main() -> Result<()> {
                                         log::error!("Failed to get conversation ID: {}", e);
                                         result.success = false;
                                         result.error = Some(e.to_string());
-                                        send_result(&mut node, &metadata.parameters, &result)?;
+                                        send_result(&mut node, &metadata, &result)?;
                                         continue;
                                     }
                                 };
@@ -139,7 +139,7 @@ async fn main() -> Result<()> {
                                     result.pronunciation_issues_stored
                                 );
                                 
-                                send_result(&mut node, &metadata.parameters, &result)?;
+                                send_result(&mut node, &metadata, &result)?;
                             }
                             Err(e) => {
                                 log::error!("Failed to parse analysis output: {}", e);
@@ -179,12 +179,12 @@ fn extract_bytes(data: &dora_node_api::ArrowData) -> Vec<u8> {
 
 fn send_result(
     node: &mut DoraNode,
-    parameters: &std::sync::Arc<serde_json::Value>,
+    _metadata: &dora_node_api::Metadata,
     result: &StorageResult
 ) -> Result<()> {
     let output_str = serde_json::to_string(result)?;
     let output_array = StringArray::from(vec![output_str.as_str()]);
-    node.send_output("result".to_string().into(), parameters.clone(), output_array)?;
+    node.send_output("result".into(), Default::default(), output_array)?;
     Ok(())
 }
 

@@ -117,7 +117,7 @@ async fn main() -> Result<()> {
                                     }
                                 };
                                 
-                                send_result(&mut node, &metadata.parameters, &result)?;
+                                send_result(&mut node, &metadata, &result)?;
                             }
                             Err(e) => {
                                 log::error!("Failed to parse ASR output: {}", e);
@@ -165,7 +165,7 @@ async fn main() -> Result<()> {
                                     }
                                 };
                                 
-                                send_result(&mut node, &metadata.parameters, &result)?;
+                                send_result(&mut node, &metadata, &result)?;
                             }
                             Err(e) => {
                                 // 尝试作为纯文本处理
@@ -196,7 +196,7 @@ async fn main() -> Result<()> {
                                         }
                                     };
                                     
-                                    send_result(&mut node, &metadata.parameters, &result)?;
+                                    send_result(&mut node, &metadata, &result)?;
                                 } else {
                                     log::error!("Failed to parse AI output: {}", e);
                                 }
@@ -238,12 +238,12 @@ fn extract_bytes(data: &dora_node_api::ArrowData) -> Vec<u8> {
 /// 发送存储结果
 fn send_result(
     node: &mut DoraNode,
-    parameters: &std::sync::Arc<serde_json::Value>,
+    metadata: &dora_node_api::Metadata,
     result: &StorageResult
 ) -> Result<()> {
     let output_str = serde_json::to_string(result)?;
     let output_array = StringArray::from(vec![output_str.as_str()]);
-    node.send_output("result".to_string().into(), parameters.clone(), output_array)?;
+    node.send_output("result".into(), metadata.parameters.clone(), output_array)?;
     
     // 发送状态
     let status = json!({
@@ -253,7 +253,7 @@ fn send_result(
     });
     
     let status_array = StringArray::from(vec![status.to_string().as_str()]);
-    node.send_output("status".to_string().into(), parameters.clone(), status_array)?;
+    node.send_output("status".into(), metadata.parameters.clone(), status_array)?;
     
     Ok(())
 }
