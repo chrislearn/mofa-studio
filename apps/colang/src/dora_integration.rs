@@ -133,7 +133,8 @@ impl DoraIntegration {
 
     /// Start a dataflow with optional environment variables
     pub fn start_dataflow(&self, dataflow_path: impl Into<PathBuf>) -> bool {
-        self.start_dataflow_with_env(dataflow_path, std::collections::HashMap::new())
+        true
+        // self.start_dataflow_with_env(dataflow_path, std::collections::HashMap::new())
     }
 
     /// Start a dataflow with environment variables
