@@ -153,17 +153,17 @@ dora list
 dora stop <dataflow-id>
 ```
 
-The `node-hub/` directory contains all Dora nodes used by the dataflows:
+The `rust-nodes/` and `python-nodes/` directories contain all Dora nodes used by the dataflows:
 
-| Node | Type | Description |
-|------|------|-------------|
-| `dora-maas-client` | Rust | LLM inference via MaaS APIs |
-| `dora-conference-bridge` | Rust | Text routing between participants |
-| `dora-conference-controller` | Rust | Turn-taking and policy management |
-| `dora-primespeech` | Python | TTS synthesis with multiple voices |
-| `dora-text-segmenter` | Python | Text segmentation for TTS |
-| `dora-asr` | Python | Speech recognition (Whisper/FunASR) |
-| `dora-common` | Python | Shared logging utilities |
+| Node | Type | Location | Description |
+|------|------|----------|-------------|
+| `dora-maas-client` | Rust | rust-nodes | LLM inference via MaaS APIs |
+| `dora-conference-bridge` | Rust | rust-nodes | Text routing between participants |
+| `dora-conference-controller` | Rust | rust-nodes | Turn-taking and policy management |
+| `dora-primespeech` | Python | python-nodes | TTS synthesis with multiple voices |
+| `dora-text-segmenter` | Python | python-nodes | Text segmentation for TTS |
+| `dora-asr` | Python | python-nodes | Speech recognition (Whisper/FunASR) |
+| `dora-common` | Python | libs | Shared logging utilities |
 
 ## 📦 Project Structure
 

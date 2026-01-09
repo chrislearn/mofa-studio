@@ -1,0 +1,37 @@
+[package]
+name = "dora-maas-client"
+version.workspace = true
+edition.workspace = true
+rust-version = "1.75.0"
+description = "Dora MaaS (Model-as-a-Service) client for LLM inference"
+license = "Apache-2.0"
+authors = ["Dora Contributors"]
+keywords = ["dora", "llm", "ai", "openai", "streaming"]
+categories = ["api-bindings", "web-programming", "asynchronous"]
+readme = "README.md"
+
+[[bin]]
+name = "dora-maas-client"
+path = "src/main.rs"
+
+[dependencies]
+async-trait.workspace = true
+bytes.workspace = true
+chrono.workspace = true
+dora-node-api = { workspace = true, features = ["tracing"] }
+eyre.workspace = true
+figment.workspace = true
+futures.workspace = true
+outfox-openai.workspace = true
+reqwest.workspace = true
+reqwest-eventsource.workspace = true
+rmcp.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true

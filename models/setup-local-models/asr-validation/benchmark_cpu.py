@@ -15,7 +15,7 @@ from typing import Dict, List, Optional
 import librosa
 
 # Add dora-asr to path
-asr_path = Path(__file__).parent.parent.parent.parent / "node-hub" / "dora-asr"
+asr_path = Path(__file__).parent.parent.parent.parent / "python-nodes" / "dora-asr"
 if asr_path.exists():
     sys.path.insert(0, str(asr_path))
 

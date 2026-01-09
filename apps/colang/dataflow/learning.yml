@@ -34,8 +34,8 @@ nodes:
 
   # 豆包 ASR - 语音转文字
   - id: doubao-asr
-    build: cargo build --manifest-path ../../../node-hub/dora-doubao-asr/Cargo.toml
-    path: ../../../node-hub/dora-doubao-asr/target/release/dora-doubao-asr
+    build: cargo build --manifest-path ../../../rust-nodes/dora-doubao-asr/Cargo.toml
+    path: ../../../rust-nodes/dora-doubao-asr/target/release/dora-doubao-asr
     inputs:
       audio: mofa-audio-input/audio
     outputs:
@@ -55,8 +55,8 @@ nodes:
   # 接收 doubao-asr/text 或 mofa-text-input/text 进行分析
   # 输出 JSON 格式: {session_id, user_text, issues[], pronunciation_issues[]}
   - id: grammar-checker
-    build: cargo build --manifest-path ../../../node-hub/dora-grammar-checker/Cargo.toml
-    path: ../../../node-hub/dora-grammar-checker/target/release/dora-grammar-checker
+    build: cargo build --manifest-path ../../../rust-nodes/dora-grammar-checker/Cargo.toml
+    path: ../../../rust-nodes/dora-grammar-checker/target/release/dora-grammar-checker
     inputs:
       asr_text: doubao-asr/text             # ASR 转换的文字
       text_input: mofa-text-input/text      # 直接文字输入
@@ -74,8 +74,8 @@ nodes:
 
   # 学习数据写入器 - 专门负责将分析结果写入数据库
   - id: learning-db-writer
-    build: cargo build --manifest-path ../../../node-hub/dora-learning-db-writer/Cargo.toml
-    path: ../../../node-hub/dora-learning-db-writer/target/release/dora-learning-db-writer
+    build: cargo build --manifest-path ../../../rust-nodes/dora-learning-db-writer/Cargo.toml
+    path: ../../../rust-nodes/dora-learning-db-writer/target/release/dora-learning-db-writer
     inputs:
       analysis: grammar-checker/analysis
     outputs:
@@ -89,8 +89,8 @@ nodes:
 
   # 历史记录写入器 - 保存对话历史到数据库
   - id: history-db-writer
-    build: cargo build --manifest-path ../../../node-hub/dora-history-db-writer/Cargo.toml
-    path: ../../../node-hub/dora-history-db-writer/target/release/dora-history-db-writer
+    build: cargo build --manifest-path ../../../rust-nodes/dora-history-db-writer/Cargo.toml
+    path: ../../../rust-nodes/dora-history-db-writer/target/release/dora-history-db-writer
     inputs:
       asr_text: doubao-asr/text             # ASR 转换的用户文字
       ai_text: english-teacher/text         # AI 生成的回复文字
@@ -108,8 +108,8 @@ nodes:
   # AI 英语老师 - 生成对话回复
   # 接收 doubao-asr/text 或 mofa-text-input/text
   - id: english-teacher
-    build: cargo build --manifest-path ../../../node-hub/dora-english-teacher/Cargo.toml
-    path: ../../../node-hub/dora-english-teacher/target/release/dora-english-teacher
+    build: cargo build --manifest-path ../../../rust-nodes/dora-english-teacher/Cargo.toml
+    path: ../../../rust-nodes/dora-english-teacher/target/release/dora-english-teacher
     inputs:
       asr_text: doubao-asr/text             # ASR 转换的文字
       text_input: mofa-text-input/text      # 直接文字输入
@@ -129,8 +129,8 @@ nodes:
 
   # 豆包 TTS - 文字转语音 (美式英语)
   - id: doubao-tts
-    build: cargo build --manifest-path ../../../node-hub/dora-doubao-tts/Cargo.toml
-    path: ../../../node-hub/dora-doubao-tts/target/release/dora-doubao-tts
+    build: cargo build --manifest-path ../../../rust-nodes/dora-doubao-tts/Cargo.toml
+    path: ../../../rust-nodes/dora-doubao-tts/target/release/dora-doubao-tts
     inputs:
       text: english-teacher/text
     outputs:

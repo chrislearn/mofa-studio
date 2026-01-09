@@ -7,8 +7,8 @@ nodes:
   
   # Selects 20-30 words from database for review (max 5 times per day per word)
   - id: word-selector
-    build: cargo build --manifest-path ../../../node-hub/dora-word-selector/Cargo.toml
-    path: ../../../node-hub/dora-word-selector/target/release/dora-word-selector
+    build: cargo build --manifest-path ../../../rust-nodes/dora-word-selector/Cargo.toml
+    path: ../../../rust-nodes/dora-word-selector/target/release/dora-word-selector
     inputs:
       trigger: session-controller/start_trigger
       control: session-controller/control
@@ -23,8 +23,8 @@ nodes:
 
   # Generates conversation topic based on selected words using Doubao AI
   - id: topic-generator
-    build: cargo build --manifest-path ../../../node-hub/dora-topic-generator/Cargo.toml
-    path: ../../../node-hub/dora-topic-generator/target/release/dora-topic-generator
+    build: cargo build --manifest-path ../../../rust-nodes/dora-topic-generator/Cargo.toml
+    path: ../../../rust-nodes/dora-topic-generator/target/release/dora-topic-generator
     inputs:
       selected_words: word-selector/selected_words
     outputs:
@@ -40,8 +40,8 @@ nodes:
   # Manages session context - ensures AI only responds to user input
   # Topic is stored but does NOT trigger AI response
   - id: session-context
-    build: cargo build --manifest-path ../../../node-hub/dora-session-context/Cargo.toml
-    path: ../../../node-hub/dora-session-context/target/release/dora-session-context
+    build: cargo build --manifest-path ../../../rust-nodes/dora-session-context/Cargo.toml
+    path: ../../../rust-nodes/dora-session-context/target/release/dora-session-context
     inputs:
       topic: topic-generator/topic  # Receives topic but doesn't forward it
       user_text: doubao-asr/text    # Only forwards when user speaks
@@ -56,8 +56,8 @@ nodes:
 
   # Speech Recognition using Doubao ASR
   - id: doubao-asr
-    build: cargo build --manifest-path ../../../node-hub/dora-doubao-asr/Cargo.toml
-    path: ../../../node-hub/dora-doubao-asr/target/release/dora-doubao-asr
+    build: cargo build --manifest-path ../../../rust-nodes/dora-doubao-asr/Cargo.toml
+    path: ../../../rust-nodes/dora-doubao-asr/target/release/dora-doubao-asr
     inputs:
       audio: mofa-audio-input/audio
     outputs:
@@ -72,8 +72,8 @@ nodes:
 
   # Text-to-Speech using Doubao TTS (American English voice)
   - id: doubao-tts
-    build: cargo build --manifest-path ../../../node-hub/dora-doubao-tts/Cargo.toml
-    path: ../../../node-hub/dora-doubao-tts/target/release/dora-doubao-tts
+    build: cargo build --manifest-path ../../../rust-nodes/dora-doubao-tts/Cargo.toml
+    path: ../../../rust-nodes/dora-doubao-tts/target/release/dora-doubao-tts
     inputs:
       text: ai-chat/response
     outputs:
@@ -93,8 +93,8 @@ nodes:
   # IMPORTANT: Only receives input from session-context which ensures
   # AI only responds when user actually speaks, not when topic arrives
   - id: ai-chat
-    build: cargo build --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
-    path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
+    build: cargo build --manifest-path ../../../rust-nodes/dora-maas-client/Cargo.toml
+    path: ../../../rust-nodes/dora-maas-client/target/release/dora-maas-client
     inputs:
       text: 
         source: session-context/chat_input  # Gated input - only when user speaks
@@ -113,8 +113,8 @@ nodes:
 
   # Analyzes user text for pronunciation, grammar, vocabulary issues
   - id: conversation-analyzer
-    build: cargo build --manifest-path ../../../node-hub/dora-conversation-analyzer/Cargo.toml
-    path: ../../../node-hub/dora-conversation-analyzer/target/release/dora-conversation-analyzer
+    build: cargo build --manifest-path ../../../rust-nodes/dora-conversation-analyzer/Cargo.toml
+    path: ../../../rust-nodes/dora-conversation-analyzer/target/release/dora-conversation-analyzer
     inputs:
       user_text: doubao-asr/text
     outputs:

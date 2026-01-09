@@ -109,7 +109,7 @@ Examples:
     parser.add_argument(
         '--primespeech-path',
         type=str,
-        default=os.path.expanduser('../../../node-hub/dora-primespeech'),
+        default=os.path.expanduser('../../../python-nodes/dora-primespeech'),
         help='Path to dora-primespeech module'
     )
     

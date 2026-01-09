@@ -50,7 +50,7 @@ doubao-asr ─────────────┘             │
 
 ```powershell
 # 构建新节点
-cargo build --release --manifest-path node-hub\dora-session-context\Cargo.toml
+cargo build --release --manifest-path rust-nodes\dora-session-context\Cargo.toml
 
 # 启动
 cd apps\colang\dataflow
@@ -70,7 +70,7 @@ dora logs session-context --follow
 
 ## 📝 关键文件
 
-- **新节点**: `node-hub/dora-session-context/`
+- **新节点**: `rust-nodes/dora-session-context/`
 - **配置**: `apps/colang/dataflow/english-learning.yml`
 - **详细文档**: `apps/colang/WAIT_FOR_USER_UPDATE.md`
 - **验证指南**: `apps/colang/USER_INPUT_WAIT_VERIFICATION.md`

@@ -72,7 +72,7 @@ nodes:
   # WebSocket server
   - id: websocket-server
     operator:
-      rust: ../../../node-hub/dora-openai-websocket
+      rust: ../../../rust-nodes/dora-openai-websocket
     outputs:
       - audio
     env:
@@ -81,7 +81,7 @@ nodes:
   # ASR with GPU
   - id: asr
     operator:
-      python: ../../../node-hub/dora-asr
+      python: ../../../python-nodes/dora-asr
     inputs:
       audio: websocket-server/audio
     outputs:
@@ -146,7 +146,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dora-asr
-COPY node-hub/dora-asr /app/dora-asr
+COPY python-nodes/dora-asr /app/dora-asr
 WORKDIR /app
 RUN pip install -e dora-asr
 
@@ -296,7 +296,7 @@ torch.cuda.empty_cache()
 nodes:
   - id: asr-multilingual
     operator:
-      python: ../../../node-hub/dora-asr
+      python: ../../../python-nodes/dora-asr
     inputs:
       audio: audio-source/audio
     outputs:

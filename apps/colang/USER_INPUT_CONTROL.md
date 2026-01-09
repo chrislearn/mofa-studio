@@ -129,8 +129,8 @@ AI chat 节点应该**只**在收到用户文本输入时才触发响应：
 
 # Chat completion using Doubao (豆包) API
 - id: ai-chat
-  build: cargo build --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
-  path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
+  build: cargo build --manifest-path ../../../rust-nodes/dora-maas-client/Cargo.toml
+  path: ../../../rust-nodes/dora-maas-client/target/release/dora-maas-client
   inputs:
     text: 
       source: doubao-asr/text  # 只有这个输入

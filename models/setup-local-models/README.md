@@ -51,11 +51,11 @@ pip install torch==2.2.0 torchaudio==2.2.0 torchvision==0.17.0
 pip install transformers==4.45.0 huggingface-hub tqdm
 
 # Dora voice nodes
-pip install -e ../../node-hub/dora-asr[gpu]
-pip install -e ../../node-hub/dora-primespeech
-pip install -e ../../node-hub/dora-text-segmenter
-pip install -e ../../node-hub/dora-speechmonitor
-pip install -e ../../node-hub/dora-qwen3[torch]
+pip install -e ../../python-nodes/dora-asr[gpu]
+pip install -e ../../python-nodes/dora-primespeech
+pip install -e ../../python-nodes/dora-text-segmenter
+pip install -e ../../python-nodes/dora-speechmonitor
+pip install -e ../../python-nodes/dora-qwen3[torch]
 
 # Optional Rust components
 cargo build --release -p dora-openai-websocket

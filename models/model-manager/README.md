@@ -184,7 +184,7 @@ Set the `BACKEND` environment variable in your dataflow YAML:
 nodes:
   - id: tts
     operator:
-      python: ../../node-hub/dora-kokoro-tts
+      python: ../../python-nodes/dora-kokoro-tts
     env:
       BACKEND: "auto"      # auto-select (tries MLX first, falls back to CPU)
       # BACKEND: "cpu"     # force CPU backend

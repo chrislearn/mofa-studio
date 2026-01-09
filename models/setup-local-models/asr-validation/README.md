@@ -92,7 +92,7 @@ Example configurations for different scenarios:
 nodes:
   - id: asr
     operator:
-      python: ../../../node-hub/dora-asr
+      python: ../../../python-nodes/dora-asr
     inputs:
       audio: audio-source/audio
     outputs:
@@ -109,7 +109,7 @@ nodes:
 nodes:
   - id: asr
     operator:
-      python: ../../../node-hub/dora-asr
+      python: ../../../python-nodes/dora-asr
     inputs:
       audio: audio-source/audio
     outputs:
@@ -125,7 +125,7 @@ nodes:
 nodes:
   - id: asr
     operator:
-      python: ../../../node-hub/dora-asr
+      python: ../../../python-nodes/dora-asr
     inputs:
       audio: audio-source/audio
     outputs:
@@ -332,13 +332,13 @@ for event in node:
 nodes:
   - id: websocket-server
     operator:
-      rust: ../../../node-hub/dora-openai-websocket
+      rust: ../../../rust-nodes/dora-openai-websocket
     outputs:
       - audio
     
   - id: asr
     operator:
-      python: ../../../node-hub/dora-asr
+      python: ../../../python-nodes/dora-asr
     inputs:
       audio: websocket-server/audio
     outputs:

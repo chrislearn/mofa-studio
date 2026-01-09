@@ -1,0 +1,14 @@
+[package]
+name = "dora-learning-db-writer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+dora-node-api.workspace = true
+eyre.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+sqlx.workspace = true
+log.workspace = true
+env_logger.workspace = true

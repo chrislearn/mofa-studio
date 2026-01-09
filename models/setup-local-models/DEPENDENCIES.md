@@ -59,10 +59,10 @@ silero-vad = ">=5.1"                # Voice activity detection
 **Installation:**
 ```bash
 # CPU only
-pip install -e node-hub/dora-asr
+pip install -e python-nodes/dora-asr
 
 # With GPU support
-pip install -e node-hub/dora-asr[gpu]
+pip install -e python-nodes/dora-asr[gpu]
 ```
 
 ### **dora-primespeech** (Text-to-Speech)
@@ -78,7 +78,7 @@ pip install -e node-hub/dora-asr[gpu]
 
 **Installation:**
 ```bash
-pip install -e node-hub/dora-primespeech
+pip install -e python-nodes/dora-primespeech
 ```
 
 ### **dora-speechmonitor** (Voice Activity Detection)
@@ -90,7 +90,7 @@ pip install -e node-hub/dora-primespeech
 
 **Installation:**
 ```bash
-pip install -e node-hub/dora-speechmonitor
+pip install -e python-nodes/dora-speechmonitor
 ```
 
 ### **dora-qwen3** (Language Model)
@@ -108,10 +108,10 @@ pip install -e node-hub/dora-speechmonitor
 **Installation:**
 ```bash
 # Standard installation
-pip install -e node-hub/dora-qwen3
+pip install -e python-nodes/dora-qwen3
 
 # With torch support (for torch models)
-pip install -e node-hub/dora-qwen3[torch]
+pip install -e python-nodes/dora-qwen3[torch]
 ```
 
 ### **dora-text-segmenter** (Text Processing)
@@ -121,7 +121,7 @@ pip install -e node-hub/dora-qwen3[torch]
 
 **Installation:**
 ```bash
-pip install -e node-hub/dora-text-segmenter
+pip install -e python-nodes/dora-text-segmenter
 ```
 
 ### **dora-kokoro-tts** (Text-to-Speech - Kokoro Engine)
@@ -146,10 +146,10 @@ pip install -e node-hub/dora-text-segmenter
 **Installation:**
 ```bash
 # CPU backend (cross-platform)
-pip install -e node-hub/dora-kokoro-tts
+pip install -e python-nodes/dora-kokoro-tts
 
 # MLX backend (macOS Apple Silicon only)
-pip install -e node-hub/dora-kokoro-tts
+pip install -e python-nodes/dora-kokoro-tts
 pip install mlx-audio  # Additional GPU backend
 ```
 
@@ -184,11 +184,11 @@ pip install transformers==4.45.0
 pip install numpy==1.26.4 scipy==1.11.4 torchmetrics==1.0.0
 
 # Install voice chat nodes
-pip install -e ../../node-hub/dora-asr[gpu]
-pip install -e ../../node-hub/dora-primespeech
-pip install -e ../../node-hub/dora-speechmonitor
-pip install -e ../../node-hub/dora-text-segmenter
-pip install -e ../../node-hub/dora-qwen3[torch]
+pip install -e ../../python-nodes/dora-asr[gpu]
+pip install -e ../../python-nodes/dora-primespeech
+pip install -e ../../python-nodes/dora-speechmonitor
+pip install -e ../../python-nodes/dora-text-segmenter
+pip install -e ../../python-nodes/dora-qwen3[torch]
 
 # Build Rust components
 cargo build --release -p dora-openai-websocket

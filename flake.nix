@@ -81,8 +81,8 @@
                 pip install --upgrade pip wheel setuptools
                 pip install "dora-rs==$TARGET_DORA_RS_VERSION"
                 pip install -e "$ROOT/libs/dora-common" \
-                  -e "$ROOT/node-hub/dora-text-segmenter" \
-                  -e "$ROOT/node-hub/dora-primespeech"
+                  -e "$ROOT/python-nodes/dora-text-segmenter" \
+                  -e "$ROOT/python-nodes/dora-primespeech"
                 touch "$VENV_DIR/.ready"
               fi
             else
@@ -120,9 +120,9 @@ PY
             echo "[MoFA][Nix] 预编译 Dora 节点..."
             cd "$ROOT"
             for manifest in \
-              "node-hub/dora-conference-bridge/Cargo.toml" \
-              "node-hub/dora-conference-controller/Cargo.toml" \
-              "node-hub/dora-maas-client/Cargo.toml"
+              "rust-nodes/dora-conference-bridge/Cargo.toml" \
+              "rust-nodes/dora-conference-controller/Cargo.toml" \
+              "rust-nodes/dora-maas-client/Cargo.toml"
             do
               if [ -f "$manifest" ]; then
                 echo "  cargo build --release --manifest-path $manifest"

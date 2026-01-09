@@ -17,7 +17,7 @@ The validation measures:
 
 ```bash
 # Install kokoro-tts with Chinese support
-pip install -e ../../../node-hub/dora-kokoro-tts
+pip install -e ../../../python-nodes/dora-kokoro-tts
 ```
 
 ### 2. Chinese Voice Verification (NEW!)

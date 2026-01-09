@@ -1,0 +1,13 @@
+[package]
+name = "dora-session-context"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+dora-node-api.workspace = true
+eyre.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+log.workspace = true
+env_logger.workspace = true

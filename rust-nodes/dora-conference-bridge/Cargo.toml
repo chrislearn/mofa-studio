@@ -1,0 +1,16 @@
+[package]
+name = "dora-conference-bridge"
+version.workspace = true
+edition.workspace = true
+rust-version = "1.75.0"
+
+[[bin]]
+name = "dora-conference-bridge"
+path = "src/main.rs"
+
+[dependencies]
+dora-node-api.workspace = true
+eyre.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true

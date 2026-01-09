@@ -7,7 +7,7 @@ nodes:
       
   # Text Segmenter
   - id: text-segmenter
-    build: pip install -e ../../node-hub/dora-text-segmenter
+    build: pip install -e ../../python-nodes/dora-text-segmenter
     path: dora-text-segmenter
     inputs:
       text:
@@ -30,7 +30,7 @@ nodes:
       
   # PrimeSpeech TTS
   - id: primespeech
-    build: pip install -e ../../node-hub/dora-primespeech
+    build: pip install -e ../../python-nodes/dora-primespeech
     path: dora-primespeech
     inputs:
       text:

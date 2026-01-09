@@ -13,8 +13,8 @@ nodes:
   # ============ Study Participants (MaaS) ============
 
   - id: student1
-    build: cargo build --release --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
-    path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
+    build: cargo build --release --manifest-path ../../../rust-nodes/dora-maas-client/Cargo.toml
+    path: ../../../rust-nodes/dora-maas-client/target/release/dora-maas-client
     inputs:
       text: bridge-to-student1/text
       control: conference-controller/llm_control
@@ -30,8 +30,8 @@ nodes:
       LOG_LEVEL: INFO
 
   - id: student2
-    build: cargo build --release --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
-    path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
+    build: cargo build --release --manifest-path ../../../rust-nodes/dora-maas-client/Cargo.toml
+    path: ../../../rust-nodes/dora-maas-client/target/release/dora-maas-client
     inputs:
       text: bridge-to-student2/text
       control: conference-controller/llm_control
@@ -47,8 +47,8 @@ nodes:
       LOG_LEVEL: INFO
 
   - id: tutor
-    build: cargo build --release --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
-    path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
+    build: cargo build --release --manifest-path ../../../rust-nodes/dora-maas-client/Cargo.toml
+    path: ../../../rust-nodes/dora-maas-client/target/release/dora-maas-client
     inputs:
       text: bridge-to-tutor/text
       control: conference-controller/judge_prompt
@@ -67,7 +67,7 @@ nodes:
 
   # Multi-Input Text Segmenter with FIFO Session Queue
   - id: multi-text-segmenter
-    build: pip install -e ../../../node-hub/dora-text-segmenter
+    build: pip install -e ../../../python-nodes/dora-text-segmenter
     path: dora-text-segmenter
     inputs:
       # Participant inputs - output names are derived from these input port names
@@ -116,7 +116,7 @@ nodes:
 
   # PrimeSpeech TTS for Student1 (Zhao Daniu - Male, Rational Voice)
   - id: primespeech-student1
-    build: pip install -e ../../../libs/dora-common -e ../../../node-hub/dora-primespeech
+    build: pip install -e ../../../libs/dora-common -e ../../../python-nodes/dora-primespeech
     path: dora-primespeech
     inputs:
       text: multi-text-segmenter/text_segment_student1
@@ -147,7 +147,7 @@ nodes:
 
   # PrimeSpeech TTS for Student2 (Chen Yifan - Female, Emotional Voice)
   - id: primespeech-student2
-    build: pip install -e ../../../libs/dora-common -e ../../../node-hub/dora-primespeech
+    build: pip install -e ../../../libs/dora-common -e ../../../python-nodes/dora-primespeech
     path: dora-primespeech
     inputs:
       text: multi-text-segmenter/text_segment_student2
@@ -178,7 +178,7 @@ nodes:
 
   # PrimeSpeech TTS for Tutor (Luo Xiang - Male, Authoritative Voice)
   - id: primespeech-tutor
-    build: pip install -e ../../../libs/dora-common -e ../../../node-hub/dora-primespeech
+    build: pip install -e ../../../libs/dora-common -e ../../../python-nodes/dora-primespeech
     path: dora-primespeech
     inputs:
       text: multi-text-segmenter/text_segment_tutor
@@ -211,8 +211,8 @@ nodes:
 
   # Bridge 1: Student2 + Tutor → Student1
   - id: bridge-to-student1
-    build: cargo build --release --manifest-path ../../../node-hub/dora-conference-bridge/Cargo.toml
-    path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
+    build: cargo build --release --manifest-path ../../../rust-nodes/dora-conference-bridge/Cargo.toml
+    path: ../../../rust-nodes/dora-conference-bridge/target/release/dora-conference-bridge
     env:
       LOG_LEVEL: INFO
       STREAMING_PORTS: student1,tutor,student2
@@ -235,8 +235,8 @@ nodes:
 
   # Bridge 2: Student1 + Tutor → Student2
   - id: bridge-to-student2
-    build: cargo build --release --manifest-path ../../../node-hub/dora-conference-bridge/Cargo.toml
-    path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
+    build: cargo build --release --manifest-path ../../../rust-nodes/dora-conference-bridge/Cargo.toml
+    path: ../../../rust-nodes/dora-conference-bridge/target/release/dora-conference-bridge
     env:
       LOG_LEVEL: INFO
       STREAMING_PORTS: student1,tutor,student2
@@ -259,8 +259,8 @@ nodes:
 
   # Bridge 3: Student1 + Student2 → Tutor
   - id: bridge-to-tutor
-    build: cargo build --release --manifest-path ../../../node-hub/dora-conference-bridge/Cargo.toml
-    path: ../../../node-hub/dora-conference-bridge/target/release/dora-conference-bridge
+    build: cargo build --release --manifest-path ../../../rust-nodes/dora-conference-bridge/Cargo.toml
+    path: ../../../rust-nodes/dora-conference-bridge/target/release/dora-conference-bridge
     env:
       LOG_LEVEL: INFO
       STREAMING_PORTS: student1,tutor,student2
@@ -284,8 +284,8 @@ nodes:
   # ============ Conference Controller (Brain) with Audio Backpressure ============
 
   - id: conference-controller
-    build: cargo build --release --manifest-path ../../../node-hub/dora-conference-controller/Cargo.toml
-    path: ../../../node-hub/dora-conference-controller/target/release/dora-conference-controller
+    build: cargo build --release --manifest-path ../../../rust-nodes/dora-conference-controller/Cargo.toml
+    path: ../../../rust-nodes/dora-conference-controller/target/release/dora-conference-controller
     env:
       DORA_POLICY_PATTERN: "[(tutor, *), (student2, 1), (student1, 2)]"
       INITIAL_QUESTION_ID: 1

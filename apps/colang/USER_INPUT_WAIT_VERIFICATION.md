@@ -7,7 +7,7 @@
 ### 1. 新增组件
 
 #### Session Context Manager (会话上下文管理器)
-- **位置**: `node-hub/dora-session-context/`
+- **位置**: `rust-nodes/dora-session-context/`
 - **功能**: 
   - 接收 topic，但**不立即转发**
   - 只在收到用户输入时才组合上下文并转发给 AI
@@ -314,10 +314,10 @@ dora logs session-context | grep "is_first_in_session: true"
 
 ```bash
 # 构建 session-context
-cargo build --release --manifest-path node-hub/dora-session-context/Cargo.toml
+cargo build --release --manifest-path rust-nodes/dora-session-context/Cargo.toml
 
 # 验证可执行文件
-ls node-hub/dora-session-context/target/release/dora-session-context.exe
+ls rust-nodes/dora-session-context/target/release/dora-session-context.exe
 ```
 
 ### 完整启动流程
@@ -327,7 +327,7 @@ ls node-hub/dora-session-context/target/release/dora-session-context.exe
 .\setup-english-learning.ps1
 
 # 或手动：
-cargo build --release --manifest-path node-hub/dora-session-context/Cargo.toml
+cargo build --release --manifest-path rust-nodes/dora-session-context/Cargo.toml
 
 # 2. 启动 dataflow
 cd apps/colang/dataflow

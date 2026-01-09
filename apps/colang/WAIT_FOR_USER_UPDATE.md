@@ -19,7 +19,7 @@
 
 #### 1. 新增节点：Session Context Manager
 
-**位置**: `node-hub/dora-session-context/`
+**位置**: `rust-nodes/dora-session-context/`
 
 **职责**:
 ```
@@ -65,8 +65,8 @@ doubao-asr      → session-context  # 用户输入触发组合
 
 ### 新增文件
 
-1. **node-hub/dora-session-context/Cargo.toml** - 新节点配置
-2. **node-hub/dora-session-context/src/main.rs** - 会话上下文管理逻辑
+1. **rust-nodes/dora-session-context/Cargo.toml** - 新节点配置
+2. **rust-nodes/dora-session-context/src/main.rs** - 会话上下文管理逻辑
 3. **apps/colang/USER_INPUT_CONTROL.md** - 控制机制说明
 4. **apps/colang/USER_INPUT_WAIT_VERIFICATION.md** - 验证测试指南
 
@@ -152,7 +152,7 @@ doubao-asr      → session-context  # 用户输入触发组合
 
 ```powershell
 # 构建 session-context
-cargo build --release --manifest-path node-hub\dora-session-context\Cargo.toml
+cargo build --release --manifest-path rust-nodes\dora-session-context\Cargo.toml
 
 # 或者运行完整设置
 .\setup-english-learning.ps1

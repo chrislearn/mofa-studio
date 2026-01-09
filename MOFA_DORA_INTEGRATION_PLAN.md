@@ -522,7 +522,7 @@ Replace the monolithic conference-dashboard approach with a modular, fine-graine
   nodes:
     - id: "{{participant_id}}_tts"
       operator:
-        python: ../../node-hub/dora-primespeech
+        python: ../../python-nodes/dora-primespeech
       env:
         VOICE_NAME: "{{voice_name}}"
   ```

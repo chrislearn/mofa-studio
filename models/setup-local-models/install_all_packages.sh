@@ -70,19 +70,19 @@ print_header "Installing Dora Python Packages"
 cd "$PROJECT_ROOT"
 
 print_info "Installing dora-primespeech..."
-pip install -e node-hub/dora-primespeech
+pip install -e python-nodes/dora-primespeech
 print_success "dora-primespeech installed"
 
 print_info "Installing dora-asr..."
-pip install -e node-hub/dora-asr
+pip install -e python-nodes/dora-asr
 print_success "dora-asr installed"
 
 print_info "Installing dora-speechmonitor..."
-pip install -e node-hub/dora-speechmonitor
+pip install -e python-nodes/dora-speechmonitor
 print_success "dora-speechmonitor installed"
 
 print_info "Installing dora-text-segmenter..."
-pip install -e node-hub/dora-text-segmenter
+pip install -e python-nodes/dora-text-segmenter
 print_success "dora-text-segmenter installed"
 
 # Install Rust if not already installed

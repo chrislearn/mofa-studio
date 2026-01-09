@@ -133,19 +133,19 @@ LOG_LEVEL=INFO
    cd apps/colang
    
    # Build word selector
-   cargo build --release --manifest-path ../../node-hub/dora-word-selector/Cargo.toml
+   cargo build --release --manifest-path ../../rust-nodes/dora-word-selector/Cargo.toml
    
    # Build topic generator
-   cargo build --release --manifest-path ../../node-hub/dora-topic-generator/Cargo.toml
+   cargo build --release --manifest-path ../../rust-nodes/dora-topic-generator/Cargo.toml
    
    # Build Doubao ASR
-   cargo build --release --manifest-path ../../node-hub/dora-doubao-asr/Cargo.toml
+   cargo build --release --manifest-path ../../rust-nodes/dora-doubao-asr/Cargo.toml
    
    # Build Doubao TTS
-   cargo build --release --manifest-path ../../node-hub/dora-doubao-tts/Cargo.toml
+   cargo build --release --manifest-path ../../rust-nodes/dora-doubao-tts/Cargo.toml
    
    # Build conversation analyzer
-   cargo build --release --manifest-path ../../node-hub/dora-conversation-analyzer/Cargo.toml
+   cargo build --release --manifest-path ../../rust-nodes/dora-conversation-analyzer/Cargo.toml
    ```
 
 2. **Initialize database**:

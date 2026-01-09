@@ -312,5 +312,6 @@ mofa-studio/
 ## References
 
 - Conference Dashboard: `examples/conference-dashboard/` - Reference implementation
-- Dora Node Hub: `node-hub/` - Dora node implementations
+- Python Nodes: `python-nodes/` - Python Dora node implementations
+- Rust Nodes: `rust-nodes/` - Rust Dora node implementations
 - Dataflow: `apps/mofa-fm/dataflow/voice-chat.yml` - Full dataflow definition

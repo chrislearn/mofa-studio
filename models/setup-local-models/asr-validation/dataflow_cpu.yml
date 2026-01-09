@@ -8,7 +8,7 @@ nodes:
       
   # ASR node with CPU only
   - id: asr
-    path: ../../../node-hub/dora-asr
+    path: ../../../python-nodes/dora-asr
     inputs:
       audio: wav-player/audio
     outputs:

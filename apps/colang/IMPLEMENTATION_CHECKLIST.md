@@ -17,11 +17,11 @@
 - [x] Text analysis for grammar/vocabulary
 
 ### Dora Nodes
-- [x] Word selector node (`node-hub/dora-word-selector/`)
-- [x] Topic generator node (`node-hub/dora-topic-generator/`)
-- [x] Doubao ASR node (`node-hub/dora-doubao-asr/`)
-- [x] Doubao TTS node (`node-hub/dora-doubao-tts/`)
-- [x] Conversation analyzer node (`node-hub/dora-conversation-analyzer/`)
+- [x] Word selector node (`rust-nodes/dora-word-selector/`)
+- [x] Topic generator node (`rust-nodes/dora-topic-generator/`)
+- [x] Doubao ASR node (`rust-nodes/dora-doubao-asr/`)
+- [x] Doubao TTS node (`rust-nodes/dora-doubao-tts/`)
+- [x] Conversation analyzer node (`rust-nodes/dora-conversation-analyzer/`)
 
 ### Configuration
 - [x] Dataflow YAML (`dataflow/english-learning.yml`)
@@ -116,11 +116,11 @@ cd apps/colang
 ### 2. Build Nodes
 ```bash
 # Build all nodes
-cargo build --release --manifest-path node-hub/dora-word-selector/Cargo.toml
-cargo build --release --manifest-path node-hub/dora-topic-generator/Cargo.toml
-cargo build --release --manifest-path node-hub/dora-doubao-asr/Cargo.toml
-cargo build --release --manifest-path node-hub/dora-doubao-tts/Cargo.toml
-cargo build --release --manifest-path node-hub/dora-conversation-analyzer/Cargo.toml
+cargo build --release --manifest-path rust-nodes/dora-word-selector/Cargo.toml
+cargo build --release --manifest-path rust-nodes/dora-topic-generator/Cargo.toml
+cargo build --release --manifest-path rust-nodes/dora-doubao-asr/Cargo.toml
+cargo build --release --manifest-path rust-nodes/dora-doubao-tts/Cargo.toml
+cargo build --release --manifest-path rust-nodes/dora-conversation-analyzer/Cargo.toml
 ```
 
 ### 3. Initialize Database (Optional)
@@ -160,11 +160,11 @@ curl -X POST https://openspeech.bytedance.com/api/v1/asr \
 ### Node Builds
 ```bash
 # Verify all binaries exist
-ls node-hub/dora-word-selector/target/release/dora-word-selector.exe
-ls node-hub/dora-topic-generator/target/release/dora-topic-generator.exe
-ls node-hub/dora-doubao-asr/target/release/dora-doubao-asr.exe
-ls node-hub/dora-doubao-tts/target/release/dora-doubao-tts.exe
-ls node-hub/dora-conversation-analyzer/target/release/dora-conversation-analyzer.exe
+ls rust-nodes/dora-word-selector/target/release/dora-word-selector.exe
+ls rust-nodes/dora-topic-generator/target/release/dora-topic-generator.exe
+ls rust-nodes/dora-doubao-asr/target/release/dora-doubao-asr.exe
+ls rust-nodes/dora-doubao-tts/target/release/dora-doubao-tts.exe
+ls rust-nodes/dora-conversation-analyzer/target/release/dora-conversation-analyzer.exe
 ```
 
 ## 🐛 Known Issues & Workarounds

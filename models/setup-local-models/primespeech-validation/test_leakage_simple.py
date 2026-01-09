@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 
 # Add PrimeSpeech to path
-primespeech_path = Path(__file__).parent.parent.parent.parent / "node-hub" / "dora-primespeech"
+primespeech_path = Path(__file__).parent.parent.parent.parent / "python-nodes" / "dora-primespeech"
 sys.path.insert(0, str(primespeech_path))
 
 def test_segment_leakage():

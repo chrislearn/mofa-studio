@@ -12,7 +12,8 @@ ENV_NAME="mofa-studio"
 PYTHON_VERSION="3.12"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$SCRIPT_DIR/../.."  # Assumes script is in examples/setup-new-chatbot
-NODE_HUB_DIR="$PROJECT_ROOT/node-hub"
+PYTHON_NODES_DIR="$PROJECT_ROOT/python-nodes"
+RUST_NODES_DIR="$PROJECT_ROOT/rust-nodes"
 
 # Colors for output
 RED='\033[0;31m'

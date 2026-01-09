@@ -9,7 +9,7 @@
 ### 新增节点
 
 #### 1. **learning-db-writer** (学习数据写入器)
-- **路径**: `node-hub/dora-learning-db-writer/`
+- **路径**: `rust-nodes/dora-learning-db-writer/`
 - **职责**: 专门负责将英语学习问题写入数据库
 - **输入**: 
   - `analysis`: 来自 grammar-checker 的分析结果 (JSON格式)
@@ -22,7 +22,7 @@
   - 将发音问题写入 `issue_words` 表
 
 #### 2. **learning-db-reader** (学习数据读取器)
-- **路径**: `node-hub/dora-learning-db-reader/`
+- **路径**: `rust-nodes/dora-learning-db-reader/`
 - **职责**: 专门负责从数据库随机读取需要复习的词汇
 - **输入**:
   - `trigger`: 来自 session-controller 的触发信号
@@ -116,13 +116,13 @@
 
 ```powershell
 # 编译 DB Writer
-cargo build --release --manifest-path node-hub/dora-learning-db-writer/Cargo.toml
+cargo build --release --manifest-path rust-nodes/dora-learning-db-writer/Cargo.toml
 
 # 编译 DB Reader
-cargo build --release --manifest-path node-hub/dora-learning-db-reader/Cargo.toml
+cargo build --release --manifest-path rust-nodes/dora-learning-db-reader/Cargo.toml
 
 # 重新编译 Analyzer (移除了 sqlx)
-cargo build --release --manifest-path node-hub/dora-conversation-analyzer/Cargo.toml
+cargo build --release --manifest-path rust-nodes/dora-conversation-analyzer/Cargo.toml
 ```
 
 ### 配置文件变更

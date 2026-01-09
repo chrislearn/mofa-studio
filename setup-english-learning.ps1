@@ -40,12 +40,12 @@ Write-Host "Building Dora nodes..." -ForegroundColor Cyan
 Write-Host ""
 
 $nodes = @(
-    @{Name="Word Selector"; Path="node-hub\dora-word-selector"},
-    @{Name="Topic Generator"; Path="node-hub\dora-topic-generator"},
-    @{Name="Session Context"; Path="node-hub\dora-session-context"},
-    @{Name="Doubao ASR"; Path="node-hub\dora-doubao-asr"},
-    @{Name="Doubao TTS"; Path="node-hub\dora-doubao-tts"},
-    @{Name="Conversation Analyzer"; Path="node-hub\dora-conversation-analyzer"}
+    @{Name="Word Selector"; Path="rust-nodes\dora-word-selector"},
+    @{Name="Topic Generator"; Path="rust-nodes\dora-topic-generator"},
+    @{Name="Session Context"; Path="rust-nodes\dora-session-context"},
+    @{Name="Doubao ASR"; Path="rust-nodes\dora-doubao-asr"},
+    @{Name="Doubao TTS"; Path="rust-nodes\dora-doubao-tts"},
+    @{Name="Conversation Analyzer"; Path="rust-nodes\dora-conversation-analyzer"}
 )
 
 foreach ($node in $nodes) {

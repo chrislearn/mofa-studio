@@ -7,7 +7,7 @@ nodes:
 
   # Kokoro TTS - converts text to speech
   - id: kokoro-tts
-    build: pip install -e ../../../node-hub/dora-kokoro-tts
+    build: pip install -e ../../../python-nodes/dora-kokoro-tts
     path: dora-kokoro-tts
     inputs:
       text:

@@ -397,7 +397,7 @@ mod tests {
 nodes:
   - id: tts
     operator:
-      python: ../../node-hub/dora-primespeech
+      python: ../../python-nodes/dora-primespeech
     outputs:
       - audio
       - log

@@ -1,0 +1,17 @@
+[package]
+name = "dora-english-teacher"
+version.workspace = true
+edition.workspace = true
+description = "Dora node for AI English teacher conversation using Doubao API"
+
+[dependencies]
+dora-node-api.workspace = true
+eyre.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+reqwest.workspace = true
+log.workspace = true
+env_logger.workspace = true
+chrono.workspace = true
+uuid.workspace = true

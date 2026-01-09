@@ -42,35 +42,35 @@ The colang application has been completely refactored into an **English Learning
 
 **New Nodes Created:**
 
-1. **dora-word-selector** (`node-hub/dora-word-selector/`)
+1. **dora-word-selector** (`rust-nodes/dora-word-selector/`)
    - Selects 20-30 words from database for review
    - Respects daily frequency limits
    - Creates learning sessions
    - **Inputs**: `trigger`, `control`
    - **Outputs**: `selected_words`, `status`
 
-2. **dora-topic-generator** (`node-hub/dora-topic-generator/`)
+2. **dora-topic-generator** (`rust-nodes/dora-topic-generator/`)
    - Generates conversation topics using Doubao AI
    - Incorporates target vocabulary words
    - Context-aware topic generation
    - **Inputs**: `selected_words`
    - **Outputs**: `topic`, `status`
 
-3. **dora-doubao-asr** (`node-hub/dora-doubao-asr/`)
+3. **dora-doubao-asr** (`rust-nodes/dora-doubao-asr/`)
    - Real-time speech recognition
    - Word-level timing and confidence
    - Saves conversations to database
    - **Inputs**: `audio`
    - **Outputs**: `text`, `status`
 
-4. **dora-doubao-tts** (`node-hub/dora-doubao-tts/`)
+4. **dora-doubao-tts** (`rust-nodes/dora-doubao-tts/`)
    - Text-to-speech with American English voice
    - Configurable speed and pitch
    - Saves AI responses to database
    - **Inputs**: `text`
    - **Outputs**: `audio`, `status`
 
-5. **dora-conversation-analyzer** (`node-hub/dora-conversation-analyzer/`)
+5. **dora-conversation-analyzer** (`rust-nodes/dora-conversation-analyzer/`)
    - Analyzes user speech for issues
    - Detects pronunciation problems (low confidence)
    - Identifies grammar and vocabulary issues
@@ -228,11 +228,11 @@ Get these from: https://www.volcengine.com
 - `apps/colang/seed_data.sql` (100+ lines)
 
 ### Dora Nodes (5 new nodes)
-- `node-hub/dora-word-selector/` (200+ lines)
-- `node-hub/dora-topic-generator/` (150+ lines)
-- `node-hub/dora-doubao-asr/` (200+ lines)
-- `node-hub/dora-doubao-tts/` (180+ lines)
-- `node-hub/dora-conversation-analyzer/` (300+ lines)
+- `rust-nodes/dora-word-selector/` (200+ lines)
+- `rust-nodes/dora-topic-generator/` (150+ lines)
+- `rust-nodes/dora-doubao-asr/` (200+ lines)
+- `rust-nodes/dora-doubao-tts/` (180+ lines)
+- `rust-nodes/dora-conversation-analyzer/` (300+ lines)
 
 ### Configuration
 - `apps/colang/dataflow/english-learning.yml` (100+ lines)

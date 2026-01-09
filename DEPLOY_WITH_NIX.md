@@ -32,7 +32,7 @@ nix --extra-experimental-features 'nix-command flakes' run .
 
 1. 自动安装/缓存 Rust toolchain、Node.js、CMake、PortAudio 等编译依赖。
 2. 在 `./.nix-mofa` 下 `cargo install` 固定版本的 `dora-cli`。
-3. 在 `./.venv-mofa` 创建 Python venv 并 `pip install -e` `libs/dora-common`、`node-hub/dora-text-segmenter`、`node-hub/dora-primespeech`。
+3. 在 `./.venv-mofa` 创建 Python venv 并 `pip install -e` `libs/dora-common`、`python-nodes/dora-text-segmenter`、`python-nodes/dora-primespeech`。
 4. 强制将 `dora-rs` Python 包固定在 `0.3.12`（可用 `MOFA_DORA_RS_VERSION` 覆盖），避免 `message format v0.6` 与 `v0.5` 不兼容报错。
 5. `pkill -f dora` → `dora up` → `dora list`/`dora stop --grace-duration 0s …`，保证没有残留的 dataflow。
 6. `cargo run --release` 启动 Makepad GUI（`MOFA_AUTO_START=1` 会自动连上 dataflow）。

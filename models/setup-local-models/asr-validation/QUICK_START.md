@@ -158,7 +158,7 @@ Your ASR setup is working if:
 ## 🆘 Get Help
 
 - Check the full [README.md](README.md) for detailed documentation
-- Review [GPU_ENHANCEMENTS.md](../../../node-hub/dora-asr/GPU_ENHANCEMENTS.md) for GPU details
+- Review [GPU_ENHANCEMENTS.md](../../../python-nodes/dora-asr/GPU_ENHANCEMENTS.md) for GPU details
 - Run `python test_basic_asr.py --help` for options
 
 ---
