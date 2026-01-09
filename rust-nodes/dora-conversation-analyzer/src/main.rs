@@ -54,6 +54,7 @@ async fn main() -> Result<()> {
     
     let api_key = std::env::var("DOUBAO_API_KEY")
         .wrap_err("DOUBAO_API_KEY environment variable not set")?;
+    println!("=========api_key2: {}", api_key);
     
     let model = std::env::var("DOUBAO_MODEL")
         .unwrap_or_else(|_| "doubao-pro-32k".to_string());

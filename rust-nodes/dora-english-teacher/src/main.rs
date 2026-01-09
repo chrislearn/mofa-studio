@@ -92,6 +92,7 @@ async fn main() -> Result<()> {
     
     let api_key = std::env::var("DOUBAO_API_KEY")
         .wrap_err("DOUBAO_API_KEY environment variable not set")?;
+    println!("=========api_key1: {}", api_key);
     
     let model = std::env::var("DOUBAO_MODEL")
         .unwrap_or_else(|_| "doubao-pro-32k".to_string());
@@ -120,12 +121,10 @@ async fn main() -> Result<()> {
         match event {
             Event::Input { id, data, metadata } => {
                 let raw_data = extract_bytes(&data);
-                
                 let (user_text, session_id) = match id.as_str() {
                     "asr_text" => {
                         // 处理 ASR 输出 (JSON 格式)
                         log::info!("Received ASR text");
-                        
                         if let Some(bytes) = &raw_data {
                             match serde_json::from_slice::<AsrOutput>(bytes) {
                                 Ok(asr_result) => {
@@ -196,7 +195,6 @@ async fn main() -> Result<()> {
                 ).await {
                     Ok(response) => {
                         log::info!("AI response: {}", response);
-                        
                         // 添加 AI 回复到历史
                         {
                             let mut hist = history.lock().unwrap();

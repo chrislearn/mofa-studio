@@ -40,8 +40,10 @@ async fn main() -> Result<()> {
     let app_id = std::env::var("DOUBAO_APP_ID")
         .wrap_err("DOUBAO_APP_ID environment variable not set")?;
     
-    let access_token = std::env::var("DOUBAO_ACCESS_TOKEN")
-        .wrap_err("DOUBAO_ACCESS_TOKEN environment variable not set")?;
+    let api_key = std::env::var("DOUBAO_API_KEY")
+        .wrap_err("DOUBAO_API_KEY environment variable not set")?;
+        println!("=========api_key6: {}", api_key);
+    
     
     let language = std::env::var("LANGUAGE").unwrap_or_else(|_| "en".to_string());
 
@@ -68,7 +70,7 @@ async fn main() -> Result<()> {
                                 match perform_asr(
                                     &client,
                                     &app_id,
-                                    &access_token,
+                                    &api_key,
                                     &language,
                                     &input
                                 ).await {

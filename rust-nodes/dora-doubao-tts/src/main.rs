@@ -2,12 +2,15 @@
 // Converts AI text responses to speech using Doubao Volcanic Engine API
 // 不再直接操作数据库，由 history-db-writer 负责保存对话历史
 
-use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}, ArrowData};
+use base64::Engine;
+use dora_node_api::{
+    arrow::array::{Array, StringArray, UInt8Array},
+    ArrowData, DoraNode, Event,
+};
 use eyre::{Context, Result};
-use reqwest::{Client, header};
+use reqwest::{header, Client};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use base64::Engine;
 
 /// 文本输入格式 (来自 english-teacher)
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,16 +38,17 @@ struct AudioOutput {
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    
-    let app_id = std::env::var("DOUBAO_APP_ID")
-        .wrap_err("DOUBAO_APP_ID environment variable not set")?;
-    
-    let access_token = std::env::var("DOUBAO_ACCESS_TOKEN")
-        .wrap_err("DOUBAO_ACCESS_TOKEN environment variable not set")?;
-    
-    let voice_type = std::env::var("VOICE_TYPE")
-        .unwrap_or_else(|_| "BV700_V2_streaming".to_string()); // Default US English voice
-    
+
+    let app_id =
+        std::env::var("DOUBAO_APP_ID").wrap_err("DOUBAO_APP_ID environment variable not set")?;
+
+    let api_key =
+        std::env::var("DOUBAO_API_KEY").wrap_err("DOUBAO_API_KEY environment variable not set")?;
+    println!("=========api_key7: {}", api_key);
+
+    let voice_type =
+        std::env::var("VOICE_TYPE").unwrap_or_else(|_| "BV700_V2_streaming".to_string()); // Default US English voice
+
     let speed_ratio: f32 = std::env::var("SPEED_RATIO")
         .ok()
         .and_then(|s| s.parse().ok())
@@ -55,8 +59,12 @@ async fn main() -> Result<()> {
         .build()?;
 
     let (mut node, mut events) = DoraNode::init_from_env()?;
-    
-    log::info!("Doubao TTS node started (voice: {}, speed: {})", voice_type, speed_ratio);
+
+    log::info!(
+        "Doubao TTS node started (voice: {}, speed: {})",
+        voice_type,
+        speed_ratio
+    );
 
     while let Some(event) = events.recv() {
         match event {
@@ -65,62 +73,82 @@ async fn main() -> Result<()> {
                 match id.as_str() {
                     "text" => {
                         log::debug!("Received text input");
-                        
+
                         // 尝试解析为 TeacherOutput (来自 english-teacher)
-                        let text_to_convert = if let Ok(teacher_output) = serde_json::from_slice::<TeacherOutput>(&raw_data) {
+                        let text_to_convert = if let Ok(teacher_output) =
+                            serde_json::from_slice::<TeacherOutput>(&raw_data)
+                        {
                             teacher_output.text
-                        } else if let Ok(text_input) = serde_json::from_slice::<TextInput>(&raw_data) {
+                        } else if let Ok(text_input) =
+                            serde_json::from_slice::<TextInput>(&raw_data)
+                        {
                             text_input.text
                         } else {
                             // 尝试作为纯文本
                             String::from_utf8_lossy(&raw_data).to_string()
                         };
-                        
+
                         if text_to_convert.trim().is_empty() {
                             log::debug!("Empty text, skipping TTS");
                             continue;
                         }
-                        
+
                         log::info!("Converting to speech: {}", text_to_convert);
-                        
+
                         match perform_tts(
                             &client,
                             &app_id,
-                            &access_token,
+                            &api_key,
                             &voice_type,
                             speed_ratio,
-                            &text_to_convert
-                        ).await {
+                            &text_to_convert,
+                        )
+                        .await
+                        {
                             Ok(audio_output) => {
                                 log::info!(
                                     "TTS generated {} bytes, duration: {}ms",
                                     audio_output.audio_data.len(),
                                     audio_output.duration_ms
                                 );
-                                
+
                                 let output_json = serde_json::to_string(&audio_output)?;
                                 let output_array = StringArray::from(vec![output_json.as_str()]);
-                                node.send_output("audio".to_string().into(), metadata.parameters.clone(), output_array)?;
-                                
+                                node.send_output(
+                                    "audio".to_string().into(),
+                                    metadata.parameters.clone(),
+                                    output_array,
+                                )?;
+
                                 // 发送状态
                                 let status = json!({
                                     "node": "doubao-tts",
                                     "status": "ok",
                                     "duration_ms": audio_output.duration_ms,
                                 });
-                                let status_array = StringArray::from(vec![status.to_string().as_str()]);
-                                node.send_output("status".to_string().into(), metadata.parameters.clone(), status_array)?;
+                                let status_array =
+                                    StringArray::from(vec![status.to_string().as_str()]);
+                                node.send_output(
+                                    "status".to_string().into(),
+                                    metadata.parameters.clone(),
+                                    status_array,
+                                )?;
                             }
                             Err(e) => {
                                 log::error!("TTS failed: {}", e);
-                                
+
                                 let status = json!({
                                     "node": "doubao-tts",
                                     "status": "error",
                                     "error": e.to_string(),
                                 });
-                                let status_array = StringArray::from(vec![status.to_string().as_str()]);
-                                node.send_output("status".to_string().into(), metadata.parameters.clone(), status_array)?;
+                                let status_array =
+                                    StringArray::from(vec![status.to_string().as_str()]);
+                                node.send_output(
+                                    "status".to_string().into(),
+                                    metadata.parameters.clone(),
+                                    status_array,
+                                )?;
                             }
                         }
                     }
@@ -166,7 +194,7 @@ async fn perform_tts(
     text: &str,
 ) -> Result<AudioOutput> {
     let url = "https://openspeech.bytedance.com/api/v1/tts";
-    
+
     let payload = json!({
         "app": {
             "appid": app_id,
@@ -202,16 +230,14 @@ async fn perform_tts(
     }
 
     let result: serde_json::Value = response.json().await?;
-    
+
     let audio_base64 = result["data"]
         .as_str()
         .ok_or_else(|| eyre::eyre!("Missing audio data in response"))?;
-    
+
     let audio_data = base64::engine::general_purpose::STANDARD.decode(audio_base64)?;
-    
-    let duration_ms = result["duration"]
-        .as_u64()
-        .unwrap_or(0);
+
+    let duration_ms = result["duration"].as_u64().unwrap_or(0);
 
     Ok(AudioOutput {
         audio_data,
