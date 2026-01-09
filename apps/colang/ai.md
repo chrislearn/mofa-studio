@@ -44,3 +44,17 @@ create_at 创建时间戳, 后面根据这个时间戳, 决定合适抽取给用
 根据发现的用户问题, 比如句型问题, 单词不熟等, 根据之前放入数据库中的时间点, 制定不同的复习频率.
 
 依据此频率回到流程的<第一步>, 重复生成对话.
+
+
+根据要求更新 colang 相关功能, 尤其是指 dora 数据流 learning.yml 以及与它相关的 node 的实现.
+
+
+- mofa-text-input: 用于接收用户输入的文本内容, 输出为用户输入的文本内容, 去除control输出.
+- mofa-audio-input: 用于接收用户输入的语音输入内容, 输出为用户输入的语音内容, 去除control输出.
+- doubao-asr 负责把mofa-audio-input输出的语音内容转换为文本内容输出.
+- grammar-checker 调用 ai api 分析 doubao-asr 或者 mofa-text-input 输出的文字内容中的语法问题, 单词问题, 输出具体问题的, json 格式文本.
+- learning-db-writer 接收grammar-checker传过来的 json 文本, 解析内容, 存入数据库.
+- english-teacher 负责接收 doubao-asr 生成的文本输出或者 mofa-text-input 的文本输出, 调用 ai api 生成对话内容的文字输出.
+- doubao-tts 负责接收 english-teacher 生成的文字输出转换为语音输出.
+- mofa-audio-player 负责接收 doubao-tts 生成的语音输出, 最终播放给用户.
+- history-db-writer 接收 doubao-asr 和 english-teacher 传过来的文本输出, 存入数据库.

@@ -1,5 +1,6 @@
 // Dora Node: Doubao ASR (Automatic Speech Recognition)
 // Converts user audio to text using Doubao Volcanic Engine API
+// 不再直接操作数据库，由 history-db-writer 负责保存对话历史
 
 use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}};
 use eyre::{Context, Result};
@@ -7,8 +8,6 @@ use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use base64::Engine;
-use sqlx::sqlite::SqlitePool;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AudioInput {
@@ -45,11 +44,6 @@ async fn main() -> Result<()> {
         .wrap_err("DOUBAO_ACCESS_TOKEN environment variable not set")?;
     
     let language = std::env::var("LANGUAGE").unwrap_or_else(|_| "en".to_string());
-    
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite://learning_companion.db".to_string());
-    
-    let pool = SqlitePool::connect(&database_url).await?;
 
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(30))
@@ -81,24 +75,31 @@ async fn main() -> Result<()> {
                                     Ok(asr_result) => {
                                         log::info!("ASR result: {}", asr_result.text);
                                         
-                                        // Save conversation to database
-                                        if let Some(ref session_id) = input.session_id {
-                                            if let Err(e) = save_conversation(
-                                                &pool,
-                                                session_id,
-                                                &asr_result.text
-                                            ).await {
-                                                log::error!("Failed to save conversation: {}", e);
-                                            }
-                                        }
-                                        
-                                        // Send output as StringArray
+                                        // Send output as StringArray (JSON)
+                                        // history-db-writer 会负责保存到数据库
                                         let output_json = serde_json::to_string(&asr_result)?;
                                         let output_array = StringArray::from(vec![output_json.as_str()]);
                                         node.send_output("text".to_string().into(), metadata.parameters.clone(), output_array)?;
+                                        
+                                        // Send status
+                                        let status = json!({
+                                            "node": "doubao-asr",
+                                            "status": "ok",
+                                            "text_length": asr_result.text.len(),
+                                        });
+                                        let status_array = StringArray::from(vec![status.to_string().as_str()]);
+                                        node.send_output("status".to_string().into(), metadata.parameters.clone(), status_array)?;
                                     }
                                     Err(e) => {
                                         log::error!("ASR failed: {}", e);
+                                        
+                                        let status = json!({
+                                            "node": "doubao-asr",
+                                            "status": "error",
+                                            "error": e.to_string(),
+                                        });
+                                        let status_array = StringArray::from(vec![status.to_string().as_str()]);
+                                        node.send_output("status".to_string().into(), metadata.parameters.clone(), status_array)?;
                                     }
                                 }
                             }
@@ -223,30 +224,4 @@ fn extract_bytes(data: &dora_node_api::ArrowData) -> Option<Vec<u8>> {
             None
         }
     }
-}
-
-async fn save_conversation(
-    pool: &SqlitePool,
-    session_id: &str,
-    text: &str,
-) -> Result<()> {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)?
-        .as_secs() as i64;
-
-    sqlx::query(
-        r#"
-        INSERT INTO conversations (
-            session_id, speaker, content_text, created_at
-        ) VALUES (?, ?, ?, ?)
-        "#
-    )
-    .bind(session_id)
-    .bind("user")
-    .bind(text)
-    .bind(now)
-    .execute(pool)
-    .await?;
-
-    Ok(())
 }

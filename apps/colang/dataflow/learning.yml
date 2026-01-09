@@ -2,29 +2,35 @@
 #
 # 英语学习伴侣 - 基于豆包/火山引擎 API
 #
-# 数据流:
-# 1. 用户输入: 语音输入(ASR转文字) 或 直接文字输入
-# 2. AI 语法/词汇检查: 检查语法正确性、用词正确性
-# 3. 生成学习报告: 对单词、句型错误的讲解
-# 4. 存储到数据库: 记录问题词汇和学习进度
-# 5. AI 老师回复: 生成对话回复并播放语音
+# 数据流架构:
+# 1. mofa-text-input: 用户文本输入 (仅输出 text, 无 control)
+# 2. mofa-audio-input: 用户语音输入 (仅输出 audio, 无 control)
+# 3. doubao-asr: 语音转文字 (接收 mofa-audio-input/audio)
+# 4. grammar-checker: AI 语法/词汇检查 (接收 asr 或 text, 输出 JSON)
+# 5. learning-db-writer: 写入学习问题到数据库 (接收 grammar-checker/analysis)
+# 6. english-teacher: AI 对话生成 (接收 asr 或 text)
+# 7. doubao-tts: 文字转语音 (接收 english-teacher/text)
+# 8. mofa-audio-player: 播放语音 (接收 doubao-tts/audio)
+# 9. history-db-writer: 保存对话历史 (接收 asr 和 english-teacher 输出)
 
 nodes:
   # ============ 用户输入层 ============
 
   # MoFA 动态节点 - 用户文字输入 (从 UI 获取)
+  # 仅输出用户输入的文字内容，不含 control 信号
   - id: mofa-text-input
     path: dynamic
     outputs:
-      - text          # 用户输入的文字
-      - control       # 控制信号 (start/stop/reset)
+      - text          # 用户输入的文字内容
 
   # MoFA 动态节点 - 用户语音输入 (从麦克风获取)
+  # 仅输出语音数据，不含 control 信号
   - id: mofa-audio-input
     path: dynamic
     outputs:
       - audio         # PCM 音频数据
-      - control       # 录音控制信号
+
+  # ============ 语音识别层 ============
 
   # 豆包 ASR - 语音转文字
   - id: doubao-asr
@@ -33,57 +39,36 @@ nodes:
     inputs:
       audio: mofa-audio-input/audio
     outputs:
-      - text          # ASR 识别的文字
+      - text          # ASR 识别的文字 (JSON: text, confidence, words, session_id)
       - status
       - log
     env:
       DOUBAO_APP_ID: ${DOUBAO_APP_ID:-}
       DOUBAO_ACCESS_TOKEN: ${DOUBAO_ACCESS_TOKEN:-}
       LANGUAGE: en
-      DATABASE_URL: sqlite://learning_companion.db
-      LOG_LEVEL: DEBUG
-      RUST_LOG: debug
-      DEBUG_ASR_STREAM: "true"
-      DEBUG_AUDIO_INPUT: "true"
-      DEBUG_TIMING: "true"
-
-  # 用户输入合并器 - 合并文字输入和语音转文字
-  - id: user-input-merger
-    build: cargo build --manifest-path ../../../node-hub/dora-session-context/Cargo.toml
-    path: ../../../node-hub/dora-session-context/target/release/dora-session-context
-    inputs:
-      text_input: mofa-text-input/text      # 直接文字输入
-      asr_text: doubao-asr/text             # ASR 转换的文字
-      reset: session-controller/control
-    outputs:
-      - user_text     # 合并后的用户文字输入
-      - status
-    env:
-      LOG_LEVEL: DEBUG
-      RUST_LOG: debug
-      DEBUG_INPUT_MERGE: "true"
-      DEBUG_TIMING: "true"
+      LOG_LEVEL: INFO
+      RUST_LOG: info
 
   # ============ AI 语法/词汇检查层 ============
 
-  # 语法检查器 - 使用豆包 API 检查语法和词汇（仅负责分析，不操作数据库）
+  # 语法检查器 - 使用豆包 API 检查语法和词汇
+  # 接收 doubao-asr/text 或 mofa-text-input/text 进行分析
+  # 输出 JSON 格式: {session_id, user_text, issues[], pronunciation_issues[]}
   - id: grammar-checker
-    build: cargo build --manifest-path ../../../node-hub/dora-conversation-analyzer/Cargo.toml
-    path: ../../../node-hub/dora-conversation-analyzer/target/release/dora-conversation-analyzer
+    build: cargo build --manifest-path ../../../node-hub/dora-grammar-checker/Cargo.toml
+    path: ../../../node-hub/dora-grammar-checker/target/release/dora-grammar-checker
     inputs:
-      user_text: user-input-merger/user_text
+      asr_text: doubao-asr/text             # ASR 转换的文字
+      text_input: mofa-text-input/text      # 直接文字输入
     outputs:
-      - analysis      # 分析报告 (JSON: session_id, user_text, issues, pronunciation_issues)
+      - analysis      # 分析报告 (JSON: session_id, user_text, issues[], pronunciation_issues[])
       - status
       - log
     env:
       DOUBAO_API_KEY: ${DOUBAO_API_KEY:-}
       DOUBAO_MODEL: doubao-pro-32k
-      LOG_LEVEL: DEBUG
-      RUST_LOG: debug
-      DEBUG_ANALYSIS: "true"
-      DEBUG_API_CALLS: "true"
-      DEBUG_TIMING: "true"
+      LOG_LEVEL: INFO
+      RUST_LOG: info
 
   # ============ 数据存储层 ============
 
@@ -99,52 +84,48 @@ nodes:
       - log
     env:
       DATABASE_URL: sqlite://learning_companion.db
-      LOG_LEVEL: DEBUG
-      RUST_LOG: debug
-      DEBUG_DB_OPS: "true"
-      DEBUG_TIMING: "true"
+      LOG_LEVEL: INFO
+      RUST_LOG: info
 
-  # 学习数据读取器 - 专门负责从数据库读取需要复习的词汇
-  - id: learning-db-reader
-    build: cargo build --manifest-path ../../../node-hub/dora-learning-db-reader/Cargo.toml
-    path: ../../../node-hub/dora-learning-db-reader/target/release/dora-learning-db-reader
+  # 历史记录写入器 - 保存对话历史到数据库
+  - id: history-db-writer
+    build: cargo build --manifest-path ../../../node-hub/dora-history-db-writer/Cargo.toml
+    path: ../../../node-hub/dora-history-db-writer/target/release/dora-history-db-writer
     inputs:
-      trigger: session-controller/control
+      asr_text: doubao-asr/text             # ASR 转换的用户文字
+      ai_text: english-teacher/text         # AI 生成的回复文字
     outputs:
-      - selected_words  # 选择的词汇列表 (JSON: words, word_details, session_id)
+      - result        # 存储结果
       - status
       - log
     env:
       DATABASE_URL: sqlite://learning_companion.db
-      MIN_WORDS: 20
-      MAX_WORDS: 30
-      LOG_LEVEL: DEBUG
-      RUST_LOG: debug
-      DEBUG_DB_OPS: "true"
-      DEBUG_TIMING: "true"
+      LOG_LEVEL: INFO
+      RUST_LOG: info
 
   # ============ AI 老师对话层 ============
 
   # AI 英语老师 - 生成对话回复
+  # 接收 doubao-asr/text 或 mofa-text-input/text
   - id: english-teacher
-    build: cargo build --manifest-path ../../../node-hub/dora-maas-client/Cargo.toml
-    path: ../../../node-hub/dora-maas-client/target/release/dora-maas-client
+    build: cargo build --manifest-path ../../../node-hub/dora-english-teacher/Cargo.toml
+    path: ../../../node-hub/dora-english-teacher/target/release/dora-english-teacher
     inputs:
-      text: user-input-merger/user_text
-      analysis: grammar-checker/analysis
-      control: session-controller/control
+      asr_text: doubao-asr/text             # ASR 转换的文字
+      text_input: mofa-text-input/text      # 直接文字输入
     outputs:
       - text          # AI 回复文本
       - status
       - log
     env:
-      MAAS_CONFIG_PATH: english_teacher_config.toml
       DOUBAO_API_KEY: ${DOUBAO_API_KEY:-}
-      LOG_LEVEL: DEBUG
-      RUST_LOG: debug
-      DEBUG_METRICS: "true"
-      DEBUG_API_CALLS: "true"
-      DEBUG_TIMING: "true"
+      DOUBAO_MODEL: doubao-pro-32k
+      LOG_LEVEL: INFO
+      RUST_LOG: info
+      # AI 系统提示: 专业英语教师
+      SYSTEM_PROMPT: "You are a professional English teacher. Your task is to help users speak authentic English. You speak English as much as possible, and only switch to Chinese when the user indicates they cannot understand. Keep responses concise and natural for conversation."
+
+  # ============ 语音合成层 ============
 
   # 豆包 TTS - 文字转语音 (美式英语)
   - id: doubao-tts
@@ -161,44 +142,31 @@ nodes:
       DOUBAO_ACCESS_TOKEN: ${DOUBAO_ACCESS_TOKEN:-}
       VOICE_TYPE: BV700_V2_streaming   # 美式英语女声
       SPEED_RATIO: 1.0
-      LOG_LEVEL: DEBUG
-      RUST_LOG: debug
-      DEBUG_TTS_STREAM: "true"
-      DEBUG_AUDIO_OUTPUT: "true"
-      DEBUG_TIMING: "true"
+      LOG_LEVEL: INFO
+      RUST_LOG: info
 
   # ============ MoFA UI 显示层 ============
 
   # 音频播放器 - 播放 AI 回复语音
   - id: mofa-audio-player
     path: dynamic
-    env:
-      LOG_LEVEL: DEBUG
-      DEBUG_AUDIO_BUFFER: "true"
-      DEBUG_PLAYBACK: "true"
-      DEBUG_TIMING: "true"
     inputs:
       audio:
         source: doubao-tts/audio
         queue_size: 1000
-      control:
-        source: session-controller/control
-        queue_size: 10
     outputs:
-      - buffer_status
-      - status
       - audio_complete
-      - log
+      - status
 
   # 聊天显示 - 显示对话历史和分析报告
   - id: mofa-chat-display
     path: dynamic
-    env:
-      LOG_LEVEL: DEBUG
-      DEBUG_UI_UPDATE: "true"
     inputs:
       user_text:
-        source: user-input-merger/user_text
+        source: doubao-asr/text
+        queue_size: 1000
+      text_input:
+        source: mofa-text-input/text
         queue_size: 1000
       ai_text:
         source: english-teacher/text
@@ -206,66 +174,5 @@ nodes:
       analysis:
         source: grammar-checker/analysis
         queue_size: 100
-      db_result:
-        source: learning-db-writer/result
-        queue_size: 100
-      selected_words:
-        source: learning-db-reader/selected_words
-        queue_size: 100
     outputs:
       - status
-
-  # 系统日志 - 聚合所有节点日志
-  - id: mofa-system-log
-    path: dynamic
-    inputs:
-      asr_log:
-        source: doubao-asr/log
-        queue_size: 1000
-      asr_status: doubao-asr/status
-      grammar_log:
-        source: grammar-checker/log
-        queue_size: 1000
-      grammar_status: grammar-checker/status
-      teacher_log:
-        source: english-teacher/log
-        queue_size: 1000
-      teacher_status: english-teacher/status
-      tts_log:
-        source: doubao-tts/log
-        queue_size: 1000
-      tts_status: doubao-tts/status
-      db_writer_log:
-        source: learning-db-writer/log
-        queue_size: 1000
-      db_writer_status: learning-db-writer/status
-      db_reader_log:
-        source: learning-db-reader/log
-        queue_size: 1000
-      db_reader_status: learning-db-reader/status
-      audio_player_log:
-        source: mofa-audio-player/log
-        queue_size: 1000
-      audio_status: mofa-audio-player/status
-
-  # ============ 会话控制器 ============
-
-  # 会话控制器 - 控制学习流程
-  - id: session-controller
-    build: cargo build --manifest-path ../../../node-hub/dora-session-controller/Cargo.toml
-    path: ../../../node-hub/dora-session-controller/target/release/dora-session-controller
-    inputs:
-      user_input: mofa-text-input/control
-      audio_complete: mofa-audio-player/audio_complete
-      analysis: grammar-checker/analysis
-    outputs:
-      - control       # 控制信号 (start/stop/reset/next)
-      - status
-      - log
-    env:
-      SESSION_MODE: learning
-      LOG_LEVEL: DEBUG
-      RUST_LOG: debug
-      DEBUG_SESSION_STATE: "true"
-      DEBUG_CONTROL_FLOW: "true"
-      DEBUG_TIMING: "true"

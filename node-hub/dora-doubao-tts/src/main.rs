@@ -1,14 +1,23 @@
 // Dora Node: Doubao TTS (Text-to-Speech)
 // Converts AI text responses to speech using Doubao Volcanic Engine API
+// 不再直接操作数据库，由 history-db-writer 负责保存对话历史
 
 use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}, ArrowData};
 use eyre::{Context, Result};
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::sqlite::SqlitePool;
-use std::time::{SystemTime, UNIX_EPOCH};
+use base64::Engine;
 
+/// 文本输入格式 (来自 english-teacher)
+#[derive(Debug, Serialize, Deserialize)]
+struct TeacherOutput {
+    text: String,
+    session_id: String,
+    timestamp: i64,
+}
+
+/// 简单文本输入格式
 #[derive(Debug, Serialize, Deserialize)]
 struct TextInput {
     text: String,
@@ -36,15 +45,10 @@ async fn main() -> Result<()> {
     let voice_type = std::env::var("VOICE_TYPE")
         .unwrap_or_else(|_| "BV700_V2_streaming".to_string()); // Default US English voice
     
-    let speed_ratio = std::env::var("SPEED_RATIO")
+    let speed_ratio: f32 = std::env::var("SPEED_RATIO")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(1.0);
-    
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite://learning_companion.db".to_string());
-    
-    let pool = SqlitePool::connect(&database_url).await?;
 
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(30))
@@ -62,47 +66,61 @@ async fn main() -> Result<()> {
                     "text" => {
                         log::debug!("Received text input");
                         
-                        match serde_json::from_slice::<TextInput>(&raw_data) {
-                            Ok(input) => {
-                                log::info!("Converting to speech: {}", input.text);
+                        // 尝试解析为 TeacherOutput (来自 english-teacher)
+                        let text_to_convert = if let Ok(teacher_output) = serde_json::from_slice::<TeacherOutput>(&raw_data) {
+                            teacher_output.text
+                        } else if let Ok(text_input) = serde_json::from_slice::<TextInput>(&raw_data) {
+                            text_input.text
+                        } else {
+                            // 尝试作为纯文本
+                            String::from_utf8_lossy(&raw_data).to_string()
+                        };
+                        
+                        if text_to_convert.trim().is_empty() {
+                            log::debug!("Empty text, skipping TTS");
+                            continue;
+                        }
+                        
+                        log::info!("Converting to speech: {}", text_to_convert);
+                        
+                        match perform_tts(
+                            &client,
+                            &app_id,
+                            &access_token,
+                            &voice_type,
+                            speed_ratio,
+                            &text_to_convert
+                        ).await {
+                            Ok(audio_output) => {
+                                log::info!(
+                                    "TTS generated {} bytes, duration: {}ms",
+                                    audio_output.audio_data.len(),
+                                    audio_output.duration_ms
+                                );
                                 
-                                match perform_tts(
-                                    &client,
-                                    &app_id,
-                                    &access_token,
-                                    &voice_type,
-                                    speed_ratio,
-                                    &input.text
-                                ).await {
-                                    Ok(audio_output) => {
-                                        log::info!(
-                                            "TTS generated {} bytes, duration: {}ms",
-                                            audio_output.audio_data.len(),
-                                            audio_output.duration_ms
-                                        );
-                                        
-                                        // Save AI conversation to database
-                                        if let Some(ref session_id) = input.session_id {
-                                            if let Err(e) = save_conversation(
-                                                &pool,
-                                                session_id,
-                                                &input.text
-                                            ).await {
-                                                log::error!("Failed to save conversation: {}", e);
-                                            }
-                                        }
-                                        
-                                        let output_json = serde_json::to_string(&audio_output)?;
-                                        let output_array = StringArray::from(vec![output_json.as_str()]);
-                                        node.send_output("audio".to_string().into(), metadata.parameters.clone(), output_array)?;
-                                    }
-                                    Err(e) => {
-                                        log::error!("TTS failed: {}", e);
-                                    }
-                                }
+                                let output_json = serde_json::to_string(&audio_output)?;
+                                let output_array = StringArray::from(vec![output_json.as_str()]);
+                                node.send_output("audio".to_string().into(), metadata.parameters.clone(), output_array)?;
+                                
+                                // 发送状态
+                                let status = json!({
+                                    "node": "doubao-tts",
+                                    "status": "ok",
+                                    "duration_ms": audio_output.duration_ms,
+                                });
+                                let status_array = StringArray::from(vec![status.to_string().as_str()]);
+                                node.send_output("status".to_string().into(), metadata.parameters.clone(), status_array)?;
                             }
                             Err(e) => {
-                                log::error!("Failed to parse text input: {}", e);
+                                log::error!("TTS failed: {}", e);
+                                
+                                let status = json!({
+                                    "node": "doubao-tts",
+                                    "status": "error",
+                                    "error": e.to_string(),
+                                });
+                                let status_array = StringArray::from(vec![status.to_string().as_str()]);
+                                node.send_output("status".to_string().into(), metadata.parameters.clone(), status_array)?;
                             }
                         }
                     }
@@ -189,7 +207,7 @@ async fn perform_tts(
         .as_str()
         .ok_or_else(|| eyre::eyre!("Missing audio data in response"))?;
     
-    let audio_data = base64::decode(audio_base64)?;
+    let audio_data = base64::engine::general_purpose::STANDARD.decode(audio_base64)?;
     
     let duration_ms = result["duration"]
         .as_u64()
@@ -201,30 +219,4 @@ async fn perform_tts(
         format: "wav".to_string(),
         sample_rate: 24000,
     })
-}
-
-async fn save_conversation(
-    pool: &SqlitePool,
-    session_id: &str,
-    text: &str,
-) -> Result<()> {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)?
-        .as_secs() as i64;
-
-    sqlx::query(
-        r#"
-        INSERT INTO conversations (
-            session_id, speaker, content_text, created_at
-        ) VALUES (?, ?, ?, ?)
-        "#
-    )
-    .bind(session_id)
-    .bind("ai")
-    .bind(text)
-    .bind(now)
-    .execute(pool)
-    .await?;
-
-    Ok(())
 }
