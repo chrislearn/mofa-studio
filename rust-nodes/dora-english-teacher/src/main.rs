@@ -86,6 +86,39 @@ struct TeacherOutput {
     timestamp: i64,
 }
 
+/// 文本问题
+#[derive(Debug, Serialize, Deserialize)]
+struct TextIssue {
+    #[serde(rename = "type")]
+    issue_type: String,     // grammar | word_choice | suggestion
+    original: String,
+    suggested: String,
+    description: String,
+    severity: String,       // low | medium | high
+    
+    #[serde(default)]
+    start_position: Option<i32>,
+    #[serde(default)]
+    end_position: Option<i32>,
+}
+
+/// 发音问题
+#[derive(Debug, Serialize, Deserialize)]
+struct PronunciationIssue {
+    word: String,
+    confidence: f32,
+}
+
+/// 分析输出格式 (for report_text)
+#[derive(Debug, Serialize, Deserialize)]
+struct AnalysisOutput {
+    session_id: String,
+    user_text: String,
+    issues: Vec<TextIssue>,
+    pronunciation_issues: Vec<PronunciationIssue>,
+    timestamp: i64,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
@@ -121,7 +154,7 @@ async fn main() -> Result<()> {
         match event {
             Event::Input { id, data, metadata } => {
                 let raw_data = extract_bytes(&data);
-                let (user_text, session_id) = match id.as_str() {
+                let (user_text, session_id, words) = match id.as_str() {
                     "asr_text" => {
                         // 处理 ASR 输出 (JSON 格式)
                         log::info!("Received ASR text");
@@ -131,7 +164,7 @@ async fn main() -> Result<()> {
                                     if asr_result.text.trim().is_empty() {
                                         continue;
                                     }
-                                    (asr_result.text, asr_result.session_id)
+                                    (asr_result.text, asr_result.session_id, Some(asr_result.words))
                                 }
                                 Err(e) => {
                                     log::error!("Failed to parse ASR output: {}", e);
@@ -150,7 +183,7 @@ async fn main() -> Result<()> {
                             if text.trim().is_empty() {
                                 continue;
                             }
-                            (text, None)
+                            (text, None, None)
                         } else {
                             continue;
                         }
@@ -199,7 +232,7 @@ async fn main() -> Result<()> {
                             hist.add_assistant_message(&response);
                         }
                         
-                        // 发送输出
+                        // 发送对话回复输出
                         let output = TeacherOutput {
                             text: response.clone(),
                             session_id: session.clone(),
@@ -214,6 +247,37 @@ async fn main() -> Result<()> {
                             metadata.parameters.clone(),
                             output_array,
                         )?;
+                        
+                        // 分析用户输入的语法/用词问题（在对话上下文中）
+                        let analysis_result = analyze_user_input(
+                            &client,
+                            &api_key,
+                            &model,
+                            &user_text,
+                            &history.lock().unwrap(),
+                            &session,
+                            words.as_ref(),
+                        ).await;
+                        
+                        match analysis_result {
+                            Ok(analysis) => {
+                                let analysis_str = serde_json::to_string(&analysis)?;
+                                let analysis_array = StringArray::from(vec![analysis_str.as_str()]);
+                                node.send_output(
+                                    "report_text".to_string().into(),
+                                    metadata.parameters.clone(),
+                                    analysis_array,
+                                )?;
+                                log::info!(
+                                    "Analysis complete: {} issues, {} pronunciation issues",
+                                    analysis.issues.len(),
+                                    analysis.pronunciation_issues.len()
+                                );
+                            }
+                            Err(e) => {
+                                log::error!("Failed to analyze user input: {}", e);
+                            }
+                        }
                         
                         // 发送状态
                         let status = json!({
@@ -266,6 +330,146 @@ Guidelines:
 7. Adjust your language complexity based on the user's level
 
 Remember: Your goal is to help the user practice speaking naturally, not to lecture them."#;
+
+/// 分析用户输入的语法/用词问题（在对话上下文中）
+async fn analyze_user_input(
+    client: &Client,
+    api_key: &str,
+    model: &str,
+    user_text: &str,
+    history: &ConversationHistory,
+    session_id: &str,
+    words: Option<&Vec<WordTiming>>,
+) -> Result<AnalysisOutput> {
+    let system_prompt = r#"You are a professional English teacher and writing coach.
+
+Task:
+Given a conversation history and the user's most recent message, analyze the user's last message for grammar mistakes, unnatural phrasing, and word choice improvements **in the context of the conversation**.
+
+Output requirements (STRICT):
+1) Return ONLY valid JSON. No Markdown, no code fences, no extra commentary.
+2) The JSON MUST be an array named `issues` (not an object). If there are no issues, return `[]`.
+3) Each item MUST follow this schema (keys exactly as written):
+{
+  "type": "grammar" | "word_choice" | "suggestion",
+  "original": string,
+  "suggested": string,
+  "description": string,
+  "severity": "low" | "medium" | "high",
+  "start_position": number | null,
+  "end_position": number | null
+}
+
+Notes:
+- `start_position` and `end_position` are character offsets into the user's last message (0-based, end is exclusive).
+- If you cannot determine an exact span, set both positions to null.
+- Keep `original` and `suggested` concise.
+- Focus on the user's last message, but consider the conversation context for naturalness.
+"#;
+
+    let mut input_items = vec![json!({
+        "role": "system",
+        "content": system_prompt
+    })];
+
+    // Include recent conversation history for context
+    let messages = history.get_messages();
+    let recent_count = messages.len().min(6); // Last 3 exchanges
+    for msg in messages.iter().rev().take(recent_count).rev() {
+        input_items.push(json!({
+            "role": msg.role,
+            "content": msg.content,
+        }));
+    }
+
+    // Final instruction
+    input_items.push(json!({
+        "role": "user",
+        "content": format!("Analyze the user's last message for issues: \"{}\"", user_text)
+    }));
+
+    let payload = json!({
+        "model": model,
+        "input": input_items,
+        "stream": false,
+        "temperature": 0.3,
+        "max_tokens": 1000
+    });
+
+    let response = client
+        .post("https://ark.cn-beijing.volces.com/api/v3/responses")
+        .header(header::AUTHORIZATION, format!("Bearer {}", api_key))
+        .header(header::CONTENT_TYPE, "application/json")
+        .json(&payload)
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        let error_text = response.text().await?;
+        eyre::bail!("API error: {}", error_text);
+    }
+
+    let result: serde_json::Value = response.json().await?;
+
+    let content = extract_responses_text(&result)
+        .ok_or_else(|| eyre::eyre!("No text content in response: {}", result))?;
+
+    let issues = parse_issues_json(&content)?;
+
+    // Collect pronunciation issues from word timings
+    let pronunciation_issues = if let Some(word_timings) = words {
+        word_timings
+            .iter()
+            .filter(|w| w.confidence < 0.7)
+            .map(|w| PronunciationIssue {
+                word: w.word.clone(),
+                confidence: w.confidence,
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    Ok(AnalysisOutput {
+        session_id: session_id.to_string(),
+        user_text: user_text.to_string(),
+        issues,
+        pronunciation_issues,
+        timestamp: chrono::Utc::now().timestamp(),
+    })
+}
+
+fn parse_issues_json(content: &str) -> Result<Vec<TextIssue>> {
+    // Happy path: strict JSON array.
+    if let Ok(issues) = serde_json::from_str::<Vec<TextIssue>>(content) {
+        return Ok(issues);
+    }
+
+    // Some models may wrap in code fences.
+    let cleaned = content
+        .trim()
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+
+    if let Ok(issues) = serde_json::from_str::<Vec<TextIssue>>(cleaned) {
+        return Ok(issues);
+    }
+
+    // Last-resort: extract first JSON array.
+    if let (Some(start), Some(end)) = (cleaned.find('['), cleaned.rfind(']')) {
+        if end > start {
+            let slice = &cleaned[start..=end];
+            if let Ok(issues) = serde_json::from_str::<Vec<TextIssue>>(slice) {
+                return Ok(issues);
+            }
+        }
+    }
+
+    log::warn!("Failed to parse AI analysis response. content={}", cleaned);
+    Ok(Vec::new())
+}
 
 /// 生成 AI 回复
 async fn generate_response(
