@@ -301,7 +301,7 @@ async fn save_conversation(
 
     let result = sqlx::query(
         r#"
-        INSERT INTO conversations (session_id, speaker, text, created_at)
+        INSERT INTO conversations (session_id, speaker, content_text, created_at)
         VALUES (?, ?, ?, ?)
         "#,
     )
