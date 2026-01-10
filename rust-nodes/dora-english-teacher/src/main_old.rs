@@ -1,7 +1,7 @@
 // Dora Node: English Teacher
-// AI 英语老师 - 使用豆包 API 生成对话回复和语法分析
-// 使用 structured outputs 一次性输出: 用户文本 + AI回复 + 语法分析
-// 输出: report_text (JSON: {session_id, user_text, ai_reply, issues[], pronunciation_issues[]})
+// AI 英语老师 - 使用豆包 API 生成对话回复
+// 接收 doubao-asr/text 或 mofa-prompt-input/text
+// 输出: AI 生成的英语对话回复
 
 use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}};
 use eyre::{Context, Result};
@@ -295,109 +295,73 @@ Guidelines:
 
 Remember: Your goal is to help the user practice speaking naturally, not to lecture them."#;
 
-/// 使用 structured outputs 一次性生成 AI 回复和语法分析
-async fn generate_comprehensive_response(
+/// 分析用户输入的语法/用词问题（在对话上下文中）
+async fn analyze_user_input(
     client: &Client,
     api_key: &str,
     model: &str,
-    system_prompt: &str,
     user_text: &str,
     history: &ConversationHistory,
     session_id: &str,
     words: Option<&Vec<WordTiming>>,
-) -> Result<ComprehensiveResponse> {
-    // Use Chat Completions API with response_format for structured outputs
-    // Per https://www.volcengine.com/docs/82379/1568221
+) -> Result<AnalysisOutput> {
+    let system_prompt = r#"You are a professional English teacher and writing coach.
 
-    let mut messages = vec![json!({
+Task:
+Given a conversation history and the user's most recent message, analyze the user's last message for grammar mistakes, unnatural phrasing, and word choice improvements **in the context of the conversation**.
+
+Output requirements (STRICT):
+1) Return ONLY valid JSON. No Markdown, no code fences, no extra commentary.
+2) The JSON MUST be an array named `issues` (not an object). If there are no issues, return `[]`.
+3) Each item MUST follow this schema (keys exactly as written):
+{
+  "type": "grammar" | "word_choice" | "suggestion",
+  "original": string,
+  "suggested": string,
+  "description": string,
+  "severity": "low" | "medium" | "high",
+  "start_position": number | null,
+  "end_position": number | null
+}
+
+Notes:
+- `start_position` and `end_position` are character offsets into the user's last message (0-based, end is exclusive).
+- If you cannot determine an exact span, set both positions to null.
+- Keep `original` and `suggested` concise.
+- Focus on the user's last message, but consider the conversation context for naturalness.
+"#;
+
+    let mut input_items = vec![json!({
         "role": "system",
-        "content": format!(
-            "{}\n\nIMPORTANT: You must respond with a JSON object containing:\n\
-            1. A natural conversational reply to the user\n\
-            2. Grammar/vocabulary analysis of the user's last message",
-            system_prompt
-        )
+        "content": system_prompt
     })];
 
-    // Add conversation history
-    for msg in history.get_messages() {
-        messages.push(json!({
+    // Include recent conversation history for context
+    let messages = history.get_messages();
+    let recent_count = messages.len().min(6); // Last 3 exchanges
+    for msg in messages.iter().rev().take(recent_count).rev() {
+        input_items.push(json!({
             "role": msg.role,
             "content": msg.content,
         }));
     }
 
-    // JSON Schema for structured output
-    let response_schema = json!({
-        "type": "object",
-        "properties": {
-            "ai_reply": {
-                "type": "string",
-                "description": "Your natural conversational response to the user in English. Keep it concise and encouraging."
-            },
-            "issues": {
-                "type": "array",
-                "description": "Grammar, word choice, or phrasing issues found in the user's last message. Empty array if no issues.",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "type": {
-                            "type": "string",
-                            "enum": ["grammar", "word_choice", "suggestion"],
-                            "description": "Type of issue"
-                        },
-                        "original": {
-                            "type": "string",
-                            "description": "The problematic text from user's message"
-                        },
-                        "suggested": {
-                            "type": "string",
-                            "description": "The corrected or better alternative"
-                        },
-                        "description": {
-                            "type": "string",
-                            "description": "Explanation of the issue"
-                        },
-                        "severity": {
-                            "type": "string",
-                            "enum": ["low", "medium", "high"],
-                            "description": "Severity level of the issue"
-                        },
-                        "start_position": {
-                            "type": ["integer", "null"],
-                            "description": "0-based character offset where issue starts (null if unknown)"
-                        },
-                        "end_position": {
-                            "type": ["integer", "null"],
-                            "description": "0-based character offset where issue ends, exclusive (null if unknown)"
-                        }
-                    },
-                    "required": ["type", "original", "suggested", "description", "severity"],
-                    "additionalProperties": false
-                }
-            }
-        },
-        "required": ["ai_reply", "issues"],
-        "additionalProperties": false
-    });
+    // Final instruction
+    input_items.push(json!({
+        "role": "user",
+        "content": format!("Analyze the user's last message for issues: \"{}\"", user_text)
+    }));
 
     let payload = json!({
         "model": model,
-        "messages": messages,
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "english_teacher_response",
-                "strict": true,
-                "schema": response_schema
-            }
-        },
-        "temperature": 0.7,
-        "max_tokens": 2000
+        "input": input_items,
+        "stream": false,
+        "temperature": 0.3,
+        "max_tokens": 1000
     });
 
     let response = client
-        .post("https://ark.cn-beijing.volces.com/api/v3/chat/completions")
+        .post("https://ark.cn-beijing.volces.com/api/v3/responses")
         .header(header::AUTHORIZATION, format!("Bearer {}", api_key))
         .header(header::CONTENT_TYPE, "application/json")
         .json(&payload)
@@ -411,26 +375,12 @@ async fn generate_comprehensive_response(
 
     let result: serde_json::Value = response.json().await?;
 
-    // Extract content from Chat Completions response
-    let content = result["choices"][0]["message"]["content"]
-        .as_str()
-        .ok_or_else(|| eyre::eyre!("No content in response"))?;
+    let content = extract_responses_text(&result)
+        .ok_or_else(|| eyre::eyre!("No text content in response: {}", result))?;
 
-    log::debug!("Structured response: {}", content);
+    let issues = parse_issues_json(&content)?;
 
-    // Parse structured JSON response
-    let structured: serde_json::Value = serde_json::from_str(content)?;
-
-    let ai_reply = structured["ai_reply"]
-        .as_str()
-        .ok_or_else(|| eyre::eyre!("Missing ai_reply in structured response"))?
-        .to_string();
-
-    let issues: Vec<TextIssue> = serde_json::from_value(
-        structured["issues"].clone()
-    ).unwrap_or_default();
-
-    // Collect pronunciation issues from ASR word timings
+    // Collect pronunciation issues from word timings
     let pronunciation_issues = if let Some(word_timings) = words {
         word_timings
             .iter()
@@ -444,14 +394,168 @@ async fn generate_comprehensive_response(
         Vec::new()
     };
 
-    Ok(ComprehensiveResponse {
+    Ok(AnalysisOutput {
         session_id: session_id.to_string(),
         user_text: user_text.to_string(),
-        ai_reply,
         issues,
         pronunciation_issues,
         timestamp: chrono::Utc::now().timestamp(),
     })
+}
+
+fn parse_issues_json(content: &str) -> Result<Vec<TextIssue>> {
+    // Happy path: strict JSON array.
+    if let Ok(issues) = serde_json::from_str::<Vec<TextIssue>>(content) {
+        return Ok(issues);
+    }
+
+    // Some models may wrap in code fences.
+    let cleaned = content
+        .trim()
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+
+    if let Ok(issues) = serde_json::from_str::<Vec<TextIssue>>(cleaned) {
+        return Ok(issues);
+    }
+
+    // Last-resort: extract first JSON array.
+    if let (Some(start), Some(end)) = (cleaned.find('['), cleaned.rfind(']')) {
+        if end > start {
+            let slice = &cleaned[start..=end];
+            if let Ok(issues) = serde_json::from_str::<Vec<TextIssue>>(slice) {
+                return Ok(issues);
+            }
+        }
+    }
+
+    log::warn!("Failed to parse AI analysis response. content={}", cleaned);
+    Ok(Vec::new())
+}
+
+/// 生成 AI 回复
+async fn generate_response(
+    client: &Client,
+    api_key: &str,
+    model: &str,
+    system_prompt: &str,
+    history: &ConversationHistory,
+) -> Result<String> {
+    // NOTE: This node calls Volcengine Ark "Responses API" endpoint:
+    //   POST https://ark.cn-beijing.volces.com/api/v3/responses
+    // Per docs, request body uses `input` (string or message list), NOT `messages`.
+    // See: https://www.volcengine.com/docs/82379/1399008?lang=zh
+
+    let mut input_items = vec![json!({
+        "role": "system",
+        "content": system_prompt,
+    })];
+
+    // 添加对话历史
+    for msg in history.get_messages() {
+        input_items.push(json!({
+            "role": msg.role,
+            "content": msg.content,
+        }));
+    }
+
+    let payload = json!({
+        "model": model,
+        "input": input_items,
+        "stream": false
+    });
+
+    let response = client
+        .post("https://ark.cn-beijing.volces.com/api/v3/responses")
+        .header(header::AUTHORIZATION, format!("Bearer {}", api_key))
+        .header(header::CONTENT_TYPE, "application/json")
+        .json(&payload)
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        let error_text = response.text().await?;
+        eyre::bail!("API error: {}", error_text);
+    }
+
+    let result: serde_json::Value = response.json().await?;
+
+    extract_responses_text(&result)
+        .ok_or_else(|| eyre::eyre!("No text content in response: {}", result))
+}
+
+fn extract_responses_text(result: &serde_json::Value) -> Option<String> {
+    // Some SDKs expose an aggregated `output`.
+    if let Some(text) = result.get("output").and_then(|v| v.as_str()) {
+        let trimmed = text.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+
+    // Responses API commonly returns `output` items. Try to locate the first output text.
+    if let Some(output) = result.get("output").and_then(|v| v.as_array()) {
+        for item in output {
+            // Common shape: { type: "message", role: "assistant", content: [{type:"output_text", text:"..."}] }
+            if let Some(text) = extract_text_from_content_value(item.get("content")?) {
+                return Some(text);
+            }
+
+            // Alternate shape: { message: { content: ... } }
+            if let Some(message) = item.get("message") {
+                if let Some(text) = extract_text_from_content_value(message.get("content")?) {
+                    return Some(text);
+                }
+            }
+        }
+    }
+
+    // Fallback for Chat Completions style responses, in case backend returns that shape.
+    result
+        .get("choices")
+        .and_then(|v| v.as_array())
+        .and_then(|choices| choices.first())
+        .and_then(|first| first.get("message"))
+        .and_then(|m| m.get("content"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+}
+
+fn extract_text_from_content_value(content: &serde_json::Value) -> Option<String> {
+    // Content may be a string.
+    if let Some(text) = content.as_str() {
+        let trimmed = text.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+
+    // Or an array of content items.
+    if let Some(items) = content.as_array() {
+        for item in items {
+            // Prefer explicit output_text.
+            if item.get("type").and_then(|v| v.as_str()) == Some("output_text") {
+                if let Some(text) = item.get("text").and_then(|v| v.as_str()) {
+                    let trimmed = text.trim();
+                    if !trimmed.is_empty() {
+                        return Some(trimmed.to_string());
+                    }
+                }
+            }
+
+            // Some variants may just carry {text:"..."}.
+            if let Some(text) = item.get("text").and_then(|v| v.as_str()) {
+                let trimmed = text.trim();
+                if !trimmed.is_empty() {
+                    return Some(trimmed.to_string());
+                }
+            }
+        }
+    }
+
+    None
 }
 
 /// 从 ArrowData 提取字节

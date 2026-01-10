@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
         .wrap_err("Failed to connect to database")?;
 
     // log::info!("Running database migrations...");
-    // sqlx::migrate!("../../apps/colang/migrations")
+    // sqlx::migrate!("../.. /apps/colang/migrations")
     //     .run(&pool)
     //     .await
     //     .wrap_err("Failed to run migrations")?;

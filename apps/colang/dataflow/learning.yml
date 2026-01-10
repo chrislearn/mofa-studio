@@ -55,25 +55,10 @@ nodes:
     # build: cargo build --manifest-path ../../../rust-nodes/dora-learning-db-writer/Cargo.toml
     path: ../../../target/debug/dora-learning-db-writer
     inputs:
-      analysis: english-teacher/report_text
+      user_text: doubao-asr/text            # 用户文本（来自ASR或文本输入）
+      ai_json: english-teacher/report_text  # AI综合响应JSON
     outputs:
-      - result        # 存储结果 (success, issues_stored, pronunciation_issues_stored)
-      - status
-      - log
-    env:
-      DATABASE_URL: sqlite://learning_companion.db
-      LOG_LEVEL: INFO
-      RUST_LOG: info
-
-  # 历史记录写入器 - 保存对话历史到数据库
-  - id: history-db-writer
-    # build: cargo build --manifest-path ../../../rust-nodes/dora-history-db-writer/Cargo.toml
-    path: ../../../target/debug/dora-history-db-writer
-    inputs:
-      asr_text: doubao-asr/text             # ASR 转换的用户文字
-      ai_text: english-teacher/text         # AI 生成的回复文字
-    outputs:
-      - result        # 存储结果
+      - result        # 存储结果 (success, conversations_stored, issues_stored, pronunciation_issues_stored)
       - status
       - log
     env:
@@ -92,8 +77,7 @@ nodes:
       asr_text: doubao-asr/text             # ASR 转换的文字
       text_input: mofa-text-input/text      # 直接文字输入
     outputs:
-      - text          # AI 回复文本
-      - report_text   # 语法/用词分析报告 (JSON: session_id, user_text, issues[], pronunciation_issues[])
+      - report_text   # 综合响应JSON (session_id, user_text, ai_reply, issues[], pronunciation_issues[])
       - status
       - log
     env:
@@ -111,7 +95,7 @@ nodes:
     # build: cargo build --manifest-path ../../../rust-nodes/dora-doubao-tts/Cargo.toml
     path: ../../../target/debug/dora-doubao-tts
     inputs:
-      text: english-teacher/text
+      text: english-teacher/report_text  # 从JSON中提取ai_reply字段
     outputs:
       - audio
       - status
@@ -153,10 +137,7 @@ nodes:
       text_input:
         source: mofa-text-input/text
         queue_size: 1000
-      ai_text:
-        source: english-teacher/text
-        queue_size: 1000
-      analysis:
+      ai_json:
         source: english-teacher/report_text
         queue_size: 100
     outputs:
@@ -179,19 +160,13 @@ nodes:
         queue_size: 1000
       learning_db_status: learning-db-writer/status
       
-      # History DB writer logs
-      history_db_log:
-        source: history-db-writer/log
-        queue_size: 1000
-      history_db_status: history-db-writer/status
-      
       # English teacher logs
       teacher_log:
         source: english-teacher/log
         queue_size: 1000
       teacher_status: english-teacher/status
-      teacher_text:
-        source: english-teacher/text
+      teacher_report:
+        source: english-teacher/report_text
         queue_size: 1000
       
       # TTS logs

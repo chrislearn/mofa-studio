@@ -1,8 +1,6 @@
 // Dora Node: Learning DB Writer
-// 英语学习数据库写入器
-// 功能：
-// 1. 接收 user_text 输入（纯文本），存储用户消息到 conversations 表
-// 2. 接收 ai_json 输入（综合JSON），存储用户消息+AI回复+语法分析到数据库
+// 专门负责将英语学习问题写入数据库
+// 接收分析结果，存储到 issue_words 和 conversation_annotations 表
 
 use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}};
 use eyre::{Context, Result};
@@ -10,33 +8,12 @@ use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqlitePool;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// 综合响应（来自 english-teacher）
 #[derive(Debug, Serialize, Deserialize)]
-struct ComprehensiveResponse {
+struct AnalysisOutput {
     session_id: String,
     user_text: String,
-    ai_reply: String,
     issues: Vec<TextIssue>,
     pronunciation_issues: Vec<PronunciationIssue>,
-    timestamp: i64,
-}
-
-/// ASR 输出格式（从 doubao-asr 接收）
-#[derive(Debug, Serialize, Deserialize)]
-struct AsrOutput {
-    text: String,
-    confidence: f32,
-    #[serde(default)]
-    words: Vec<WordTiming>,
-    session_id: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct WordTiming {
-    word: String,
-    start_time: f64,
-    end_time: f64,
-    confidence: f32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -63,7 +40,6 @@ struct PronunciationIssue {
 #[derive(Debug, Serialize, Deserialize)]
 struct StorageResult {
     success: bool,
-    conversations_stored: usize,
     issues_stored: usize,
     pronunciation_issues_stored: usize,
     error: Option<String>,
@@ -76,10 +52,16 @@ async fn main() -> Result<()> {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "sqlite://learning_companion.db".to_string());
     
-    log::info!("Learning DB Writer connecting to database: {}", database_url);
+    log::info!("DB Writer connecting to database: {}", database_url);
     let pool = SqlitePool::connect(&database_url)
         .await
         .wrap_err("Failed to connect to database")?;
+
+    // log::info!("Running database migrations...");
+    // sqlx::migrate!("../../apps/colang/migrations")
+    //     .run(&pool)
+    //     .await
+    //     .wrap_err("Failed to run migrations")?;
 
     let (mut node, mut events) = DoraNode::init_from_env()?;
     
@@ -88,109 +70,50 @@ async fn main() -> Result<()> {
     while let Some(event) = events.recv() {
         match event {
             Event::Input { id, data, metadata } => {
-                let raw_data = extract_bytes(&data);
-                
                 match id.as_str() {
-                    "user_text" => {
-                        // 处理纯文本用户输入（来自 mofa-text-input 或 doubao-asr）
-                        log::info!("Received user text input");
+                    "analysis" => {
+                        log::info!("Received analysis data for storage");
                         
+                        let raw_data = extract_bytes(&data);
                         if raw_data.is_empty() {
-                            log::warn!("Empty user text received");
+                            log::warn!("Empty analysis data received");
                             continue;
                         }
                         
-                        // 尝试解析为 ASR 输出（JSON）或纯文本
-                        let (user_text, session_id) = if let Ok(asr) = serde_json::from_slice::<AsrOutput>(&raw_data) {
-                            (asr.text, asr.session_id.unwrap_or_else(|| "default".to_string()))
-                        } else {
-                            let text = String::from_utf8_lossy(&raw_data).to_string();
-                            (text, "default".to_string())
-                        };
-                        
-                        if user_text.trim().is_empty() {
-                            log::debug!("Empty text, skipping storage");
-                            continue;
-                        }
-                        
-                        log::info!("Storing user message: {}", user_text);
-                        
-                        let mut result = StorageResult {
-                            success: true,
-                            conversations_stored: 0,
-                            issues_stored: 0,
-                            pronunciation_issues_stored: 0,
-                            error: None,
-                        };
-                        
-                        match save_conversation(&pool, &session_id, "user", &user_text).await {
-                            Ok(_) => result.conversations_stored += 1,
-                            Err(e) => {
-                                log::error!("Failed to save user message: {}", e);
-                                result.success = false;
-                                result.error = Some(e.to_string());
-                            }
-                        }
-                        
-                        send_result(&mut node, &metadata, &result)?;
-                    }
-                    "ai_json" => {
-                        // 处理综合 JSON 输入（来自 english-teacher/report_text）
-                        log::info!("Received AI JSON data");
-                        
-                        if raw_data.is_empty() {
-                            log::warn!("Empty AI JSON received");
-                            continue;
-                        }
-                        
-                        match serde_json::from_slice::<ComprehensiveResponse>(&raw_data) {
-                            Ok(response) => {
+                        match serde_json::from_slice::<AnalysisOutput>(&raw_data) {
+                            Ok(analysis) => {
                                 log::info!(
-                                    "Storing comprehensive response: user='{}', ai='{}', {} issues, {} pronunciation issues",
-                                    response.user_text, response.ai_reply,
-                                    response.issues.len(), response.pronunciation_issues.len()
+                                    "Storing analysis: {} text issues, {} pronunciation issues",
+                                    analysis.issues.len(),
+                                    analysis.pronunciation_issues.len()
                                 );
                                 
                                 let mut result = StorageResult {
                                     success: true,
-                                    conversations_stored: 0,
                                     issues_stored: 0,
                                     pronunciation_issues_stored: 0,
                                     error: None,
                                 };
                                 
-                                // 1. 存储用户消息到 conversations
-                                match save_conversation(&pool, &response.session_id, "user", &response.user_text).await {
-                                    Ok(_) => result.conversations_stored += 1,
-                                    Err(e) => {
-                                        log::error!("Failed to save user conversation: {}", e);
-                                        result.success = false;
-                                        result.error = Some(e.to_string());
-                                    }
-                                }
-                                
-                                // 2. 存储 AI 回复到 conversations
-                                match save_conversation(&pool, &response.session_id, "assistant", &response.ai_reply).await {
-                                    Ok(_) => result.conversations_stored += 1,
-                                    Err(e) => {
-                                        log::error!("Failed to save AI conversation: {}", e);
-                                        result.success = false;
-                                    }
-                                }
-                                
-                                // 3. 获取 conversation ID 用于关联 annotations
-                                let conv_id = match get_latest_conversation_id(&pool, &response.session_id, "user").await {
+                                // Get conversation ID
+                                let conv_id = match get_or_create_conversation_id(
+                                    &pool,
+                                    &analysis.session_id,
+                                    &analysis.user_text
+                                ).await {
                                     Ok(id) => id,
                                     Err(e) => {
                                         log::error!("Failed to get conversation ID: {}", e);
+                                        result.success = false;
+                                        result.error = Some(e.to_string());
                                         send_result(&mut node, &metadata, &result)?;
                                         continue;
                                     }
                                 };
                                 
-                                // 4. 存储语法/用词问题
-                                for issue in &response.issues {
-                                    match save_text_issue(&pool, conv_id, issue, &response.user_text).await {
+                                // Store text issues
+                                for issue in &analysis.issues {
+                                    match save_text_issue(&pool, conv_id, issue, &analysis.user_text).await {
                                         Ok(_) => result.issues_stored += 1,
                                         Err(e) => {
                                             log::error!("Failed to save text issue: {}", e);
@@ -199,13 +122,13 @@ async fn main() -> Result<()> {
                                     }
                                 }
                                 
-                                // 5. 存储发音问题
-                                for p_issue in &response.pronunciation_issues {
+                                // Store pronunciation issues
+                                for p_issue in &analysis.pronunciation_issues {
                                     match save_pronunciation_issue(
                                         &pool,
                                         &p_issue.word,
                                         p_issue.confidence,
-                                        &response.user_text
+                                        &analysis.user_text
                                     ).await {
                                         Ok(_) => result.pronunciation_issues_stored += 1,
                                         Err(e) => {
@@ -216,8 +139,7 @@ async fn main() -> Result<()> {
                                 }
                                 
                                 log::info!(
-                                    "Storage complete: {} conversations, {} issues, {} pronunciation issues",
-                                    result.conversations_stored,
+                                    "Storage complete: {} text issues, {} pronunciation issues",
                                     result.issues_stored,
                                     result.pronunciation_issues_stored
                                 );
@@ -225,7 +147,7 @@ async fn main() -> Result<()> {
                                 send_result(&mut node, &metadata, &result)?;
                             }
                             Err(e) => {
-                                log::error!("Failed to parse AI JSON: {}", e);
+                                log::error!("Failed to parse analysis output: {}", e);
                             }
                         }
                     }
@@ -248,26 +170,64 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// 保存对话记录到 conversations 表
-async fn save_conversation(
+fn extract_bytes(data: &dora_node_api::ArrowData) -> Vec<u8> {
+    if let Some(array) = data.0.as_any().downcast_ref::<StringArray>() {
+        if array.len() > 0 {
+            return array.value(0).as_bytes().to_vec();
+        }
+    }
+    if let Some(array) = data.0.as_any().downcast_ref::<UInt8Array>() {
+        return array.values().to_vec();
+    }
+    Vec::new()
+}
+
+fn send_result(
+    node: &mut DoraNode,
+    _metadata: &dora_node_api::Metadata,
+    result: &StorageResult
+) -> Result<()> {
+    let output_str = serde_json::to_string(result)?;
+    let output_array = StringArray::from(vec![output_str.as_str()]);
+    node.send_output("result".into(), Default::default(), output_array)?;
+    Ok(())
+}
+
+async fn get_or_create_conversation_id(
     pool: &SqlitePool,
     session_id: &str,
-    speaker: &str,
-    text: &str,
+    user_text: &str,
 ) -> Result<i64> {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)?
         .as_secs() as i64;
     
-    let result = sqlx::query(
+    // Try to get existing conversation
+    let existing: Option<i64> = sqlx::query_scalar(
         r#"
-        INSERT INTO conversations (session_id, speaker, text, created_at)
-        VALUES (?, ?, ?, ?)
+        SELECT id FROM conversations 
+        WHERE session_id = ? AND speaker = 'user'
+        ORDER BY created_at DESC 
+        LIMIT 1
         "#
     )
     .bind(session_id)
-    .bind(speaker)
-    .bind(text)
+    .fetch_optional(pool)
+    .await?;
+    
+    if let Some(id) = existing {
+        return Ok(id);
+    }
+    
+    // Create new conversation
+    let result = sqlx::query(
+        r#"
+        INSERT INTO conversations (session_id, speaker, text, created_at)
+        VALUES (?, 'user', ?, ?)
+        "#
+    )
+    .bind(session_id)
+    .bind(user_text)
     .bind(now)
     .execute(pool)
     .await?;
@@ -275,29 +235,6 @@ async fn save_conversation(
     Ok(result.last_insert_rowid())
 }
 
-/// 获取最新的 conversation ID
-async fn get_latest_conversation_id(
-    pool: &SqlitePool,
-    session_id: &str,
-    speaker: &str,
-) -> Result<i64> {
-    let id: i64 = sqlx::query_scalar(
-        r#"
-        SELECT id FROM conversations 
-        WHERE session_id = ? AND speaker = ?
-        ORDER BY created_at DESC 
-        LIMIT 1
-        "#
-    )
-    .bind(session_id)
-    .bind(speaker)
-    .fetch_one(pool)
-    .await?;
-    
-    Ok(id)
-}
-
-/// 保存文本问题到 conversation_annotations 和 issue_words 表
 async fn save_text_issue(
     pool: &SqlitePool,
     conversation_id: i64,
@@ -308,7 +245,7 @@ async fn save_text_issue(
         .duration_since(UNIX_EPOCH)?
         .as_secs() as i64;
     
-    // 保存到 conversation_annotations
+    // Save annotation
     let annotation_type = match issue.issue_type.as_str() {
         "grammar" => "grammar_error",
         "word_choice" => "word_choice",
@@ -338,7 +275,7 @@ async fn save_text_issue(
     .execute(pool)
     .await?;
     
-    // 提取单词并保存到 issue_words
+    // Extract words and save to issue_words
     let words: Vec<&str> = issue.original.split_whitespace().collect();
     
     let issue_type_db = match issue.issue_type.as_str() {
@@ -378,7 +315,6 @@ async fn save_text_issue(
     Ok(())
 }
 
-/// 保存发音问题到 issue_words 表
 async fn save_pronunciation_issue(
     pool: &SqlitePool,
     word: &str,
@@ -415,28 +351,5 @@ async fn save_pronunciation_issue(
     .execute(pool)
     .await?;
 
-    Ok(())
-}
-
-fn extract_bytes(data: &dora_node_api::ArrowData) -> Vec<u8> {
-    if let Some(array) = data.0.as_any().downcast_ref::<StringArray>() {
-        if array.len() > 0 {
-            return array.value(0).as_bytes().to_vec();
-        }
-    }
-    if let Some(array) = data.0.as_any().downcast_ref::<UInt8Array>() {
-        return array.values().to_vec();
-    }
-    Vec::new()
-}
-
-fn send_result(
-    node: &mut DoraNode,
-    _metadata: &dora_node_api::Metadata,
-    result: &StorageResult
-) -> Result<()> {
-    let output_str = serde_json::to_string(result)?;
-    let output_array = StringArray::from(vec![output_str.as_str()]);
-    node.send_output("result".into(), Default::default(), output_array)?;
     Ok(())
 }
