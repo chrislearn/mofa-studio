@@ -139,36 +139,45 @@ async fn main() -> Result<()> {
                             Ok((audio_bytes, audio_metadata)) => {
                                 log::info!("TTS generated {} bytes", audio_bytes.len());
 
-                                // Convert UInt8 MP3 bytes to Float32 mono samples for audio player
-                                // MP3 may be stereo (2 channels), need to convert to mono
+                                // Convert MP3 bytes to Float32 mono samples for audio player
                                 // Decode MP3 to PCM samples using minimp3
+                                // minimp3 Frame.data contains interleaved i16 samples: [L, R, L, R, ...] for stereo
                                 
                                 let mut decoder = Decoder::new(&audio_bytes[..]);
                                 let mut audio_samples: Vec<f32> = Vec::new();
                                 let mut actual_sample_rate = 24000; // Default from API config
+                                let mut total_channels = 1;
                                 
                                 loop {
                                     match decoder.next_frame() {
                                         Ok(Frame { data, sample_rate, channels, .. }) => {
                                             actual_sample_rate = sample_rate as u32;
+                                            total_channels = channels;
+                                            
+                                            log::debug!("Frame: {} samples, {} channels, {} Hz", 
+                                                data.len(), channels, sample_rate);
                                             
                                             // Convert i16 PCM to f32 normalized samples
-                                            // Handle stereo to mono conversion if needed
+                                            // data is Vec<i16> with interleaved channels: [L,R,L,R,...] for stereo
                                             if channels == 2 {
-                                                // Stereo: average left and right channels
-                                                for i in (0..data.len()).step_by(2) {
-                                                    let left = data[i] as f32 / 32768.0;
-                                                    let right = if i + 1 < data.len() {
-                                                        data[i + 1] as f32 / 32768.0
-                                                    } else {
-                                                        left
-                                                    };
+                                                // Stereo: data is interleaved [L0, R0, L1, R1, ...]
+                                                // Convert to mono by averaging left and right
+                                                for chunk in data.chunks_exact(2) {
+                                                    let left = chunk[0] as f32 / 32768.0;
+                                                    let right = chunk[1] as f32 / 32768.0;
                                                     audio_samples.push((left + right) / 2.0);
                                                 }
-                                            } else {
+                                            } else if channels == 1 {
                                                 // Mono: direct conversion
-                                                for sample in data {
+                                                for &sample in &data {
                                                     audio_samples.push(sample as f32 / 32768.0);
+                                                }
+                                            } else {
+                                                // Multi-channel: just take first channel
+                                                for chunk in data.chunks(channels) {
+                                                    if let Some(&sample) = chunk.first() {
+                                                        audio_samples.push(sample as f32 / 32768.0);
+                                                    }
                                                 }
                                             }
                                         }
@@ -180,8 +189,8 @@ async fn main() -> Result<()> {
                                     }
                                 }
                                 
-                                log::info!("Decoded {} MP3 bytes to {} mono PCM samples at {}Hz", 
-                                    audio_bytes.len(), audio_samples.len(), actual_sample_rate);
+                                log::info!("Decoded {} MP3 bytes to {} mono samples at {}Hz (source: {} channels)", 
+                                    audio_bytes.len(), audio_samples.len(), actual_sample_rate, total_channels);
 
                                 let audio_array =
                                     dora_node_api::arrow::array::ListArray::from_iter_primitive::<
@@ -346,7 +355,7 @@ async fn perform_tts_websocket(
             "speaker": speaker,
             "audio_params": {
                 "format": "mp3",
-                "sample_rate": 24000,
+                "sample_rate": 48000,
                 "speech_rate": speech_rate,
                 "enable_timestamp": true
             },
