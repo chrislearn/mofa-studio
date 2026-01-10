@@ -40,10 +40,11 @@ async fn main() -> Result<()> {
     let app_id = std::env::var("DOUBAO_APP_ID")
         .wrap_err("DOUBAO_APP_ID environment variable not set")?;
     
-    let api_key = std::env::var("DOUBAO_API_KEY")
-        .wrap_err("DOUBAO_API_KEY environment variable not set")?;
-        println!("=========api_key6: {}", api_key);
+    let access_token = std::env::var("DOUBAO_ACCESS_TOKEN")
+        .wrap_err("DOUBAO_ACCESS_TOKEN environment variable not set")?;
     
+    let cluster = std::env::var("DOUBAO_CLUSTER")
+        .wrap_err("DOUBAO_CLUSTER environment variable not set")?;
     
     let language = std::env::var("LANGUAGE").unwrap_or_else(|_| "en".to_string());
 
@@ -53,7 +54,7 @@ async fn main() -> Result<()> {
 
     let (mut node, mut events) = DoraNode::init_from_env()?;
     
-    log::info!("Doubao ASR node started (language: {})", language);
+    log::info!("Doubao ASR node started (language: {}, cluster: {})", language, cluster);
 
     while let Some(event) = events.recv() {
         match event {
@@ -70,7 +71,8 @@ async fn main() -> Result<()> {
                                 match perform_asr(
                                     &client,
                                     &app_id,
-                                    &api_key,
+                                    &access_token,
+                                    &cluster,
                                     &language,
                                     &input
                                 ).await {
@@ -133,6 +135,7 @@ async fn perform_asr(
     client: &Client,
     app_id: &str,
     access_token: &str,
+    cluster: &str,
     language: &str,
     input: &AudioInput,
 ) -> Result<AsrOutput> {
@@ -143,7 +146,8 @@ async fn perform_asr(
     let payload = json!({
         "app": {
             "appid": app_id,
-            "token": access_token
+            "token": access_token,
+            "cluster": cluster
         },
         "user": {
             "uid": "user_001"

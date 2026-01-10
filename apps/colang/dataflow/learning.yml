@@ -31,7 +31,7 @@ nodes:
 
   # ============ 语音识别层 ============
 
-  # 豆包 ASR - 语音转文字
+  # 豆包 ASR - 语音转文字 (如果ASR继续使用HTTP API,保留cluster)
   - id: doubao-asr
     build: cargo build --manifest-path ../../../rust-nodes/dora-doubao-asr/Cargo.toml
     path: ../../../target/debug/dora-doubao-asr
@@ -44,6 +44,7 @@ nodes:
     env:
       DOUBAO_APP_ID: ${DOUBAO_APP_ID:-}
       DOUBAO_ACCESS_TOKEN: ${DOUBAO_ACCESS_TOKEN:-}
+      DOUBAO_CLUSTER: ${DOUBAO_CLUSTER:-volcano_asr}  # ASR 仍使用 HTTP API
       LANGUAGE: en
       LOG_LEVEL: INFO
       RUST_LOG: info
@@ -90,7 +91,7 @@ nodes:
 
   # ============ 语音合成层 ============
 
-  # 豆包 TTS - 文字转语音 (美式英语)
+  # 豆包 TTS - 文字转语音 (美式英语) - 使用双向流式 WebSocket API
   - id: doubao-tts
     # build: cargo build --manifest-path ../../../rust-nodes/dora-doubao-tts/Cargo.toml
     path: ../../../target/debug/dora-doubao-tts
@@ -103,7 +104,8 @@ nodes:
     env:
       DOUBAO_APP_ID: ${DOUBAO_APP_ID:-}
       DOUBAO_ACCESS_TOKEN: ${DOUBAO_ACCESS_TOKEN:-}
-      VOICE_TYPE: BV700_V2_streaming   # 美式英语女声
+      DOUBAO_RESOURCE_ID: ${DOUBAO_RESOURCE_ID:-seed-tts-2.0}  # 豆包语音合成模型2.0
+      VOICE_TYPE: ${VOICE_TYPE:-zh_female_cancan_mars_bigtts}  # 默认中文女声
       SPEED_RATIO: 1.0
       LOG_LEVEL: INFO
       RUST_LOG: info
