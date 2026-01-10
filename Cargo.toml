@@ -53,6 +53,7 @@ figment = { version = "0.10.0", features = ["env", "json", "toml", "yaml"] }
 reqwest-eventsource = "0.6.0"
 tokio-stream = "0.1"
 tokio-util = "0.7"
+minimp3 = "0.5"
 
 # External git dependencies
 outfox-openai = { version = "0.2.0", git = "https://github.com/outfox-ai/outfox.git" }

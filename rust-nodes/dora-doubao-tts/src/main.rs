@@ -9,10 +9,12 @@ use dora_node_api::{
     ArrowData, DoraNode, Event,
 };
 use eyre::{Context, Result};
+use minimp3::{Decoder, Frame};
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+
 /// 综合响应格式 (来自 english-teacher/json_data)
 #[derive(Debug, Serialize, Deserialize)]
 struct ComprehensiveResponse {
@@ -137,12 +139,69 @@ async fn main() -> Result<()> {
                             Ok((audio_bytes, audio_metadata)) => {
                                 log::info!("TTS generated {} bytes", audio_bytes.len());
 
-                                // Send audio bytes with metadata
-                                let audio_array = UInt8Array::from(audio_bytes);
+                                // Convert UInt8 MP3 bytes to Float32 mono samples for audio player
+                                // MP3 may be stereo (2 channels), need to convert to mono
+                                // Decode MP3 to PCM samples using minimp3
+                                
+                                let mut decoder = Decoder::new(&audio_bytes[..]);
+                                let mut audio_samples: Vec<f32> = Vec::new();
+                                let mut actual_sample_rate = 24000; // Default from API config
+                                
+                                loop {
+                                    match decoder.next_frame() {
+                                        Ok(Frame { data, sample_rate, channels, .. }) => {
+                                            actual_sample_rate = sample_rate as u32;
+                                            
+                                            // Convert i16 PCM to f32 normalized samples
+                                            // Handle stereo to mono conversion if needed
+                                            if channels == 2 {
+                                                // Stereo: average left and right channels
+                                                for i in (0..data.len()).step_by(2) {
+                                                    let left = data[i] as f32 / 32768.0;
+                                                    let right = if i + 1 < data.len() {
+                                                        data[i + 1] as f32 / 32768.0
+                                                    } else {
+                                                        left
+                                                    };
+                                                    audio_samples.push((left + right) / 2.0);
+                                                }
+                                            } else {
+                                                // Mono: direct conversion
+                                                for sample in data {
+                                                    audio_samples.push(sample as f32 / 32768.0);
+                                                }
+                                            }
+                                        }
+                                        Err(minimp3::Error::Eof) => break,
+                                        Err(e) => {
+                                            log::error!("MP3 decode error: {}", e);
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                log::info!("Decoded {} MP3 bytes to {} mono PCM samples at {}Hz", 
+                                    audio_bytes.len(), audio_samples.len(), actual_sample_rate);
+
+                                let audio_array =
+                                    dora_node_api::arrow::array::ListArray::from_iter_primitive::<
+                                        dora_node_api::arrow::datatypes::Float32Type,
+                                        _,
+                                        _,
+                                    >(std::iter::once(Some(
+                                        audio_samples.iter().map(|&s| Some(s)),
+                                    )));
+
+                                // Add sample rate to metadata parameters for audio player
+                                let mut output_params = metadata.parameters.clone();
+                                output_params.insert(
+                                    "sample_rate".to_string(),
+                                    dora_node_api::Parameter::Integer(actual_sample_rate as i64),
+                                );
 
                                 node.send_output(
                                     "audio_bytes".to_string().into(),
-                                    metadata.parameters.clone(),
+                                    output_params.clone(),
                                     audio_array,
                                 )?;
 
@@ -152,7 +211,7 @@ async fn main() -> Result<()> {
 
                                 node.send_output(
                                     "audio_metadata".to_string().into(),
-                                    metadata.parameters.clone(),
+                                    output_params.clone(),
                                     audio_metadata,
                                 )?;
 
@@ -164,7 +223,7 @@ async fn main() -> Result<()> {
                                     StringArray::from(vec![status.to_string().as_str()]);
                                 node.send_output(
                                     "status".to_string().into(),
-                                    metadata.parameters.clone(),
+                                    output_params,
                                     status_array,
                                 )?;
                             }
@@ -418,10 +477,13 @@ async fn perform_tts_websocket(
         audio_data.len()
     );
 
+    // Calculate actual duration using minimp3
+    let (duration_ms, sample_rate) = calculate_mp3_duration(&audio_data)?;
+
     let metadata = AudioMetadata {
-        duration_ms: 0,
+        duration_ms,
         format: "mp3".to_string(),
-        sample_rate: 24000,
+        sample_rate,
         bytes: audio_data.len(),
     };
 
@@ -483,6 +545,41 @@ fn parse_event(data: &[u8]) -> Result<i32> {
     }
     println!("==================parse_event2");
     Ok(i32::from_be_bytes([data[4], data[5], data[6], data[7]]))
+}
+
+fn calculate_mp3_duration(audio_data: &[u8]) -> Result<(u64, u32)> {
+    let mut decoder = Decoder::new(std::io::Cursor::new(audio_data));
+    let mut total_samples = 0u64;
+    let mut sample_rate = 24000u32;
+
+    loop {
+        match decoder.next_frame() {
+            Ok(Frame {
+                data,
+                sample_rate: rate,
+                channels,
+                ..
+            }) => {
+                sample_rate = rate as u32;
+                // data.len() is the number of samples (for all channels)
+                // Divide by channels to get actual number of sample frames
+                total_samples += (data.len() / channels) as u64;
+            }
+            Err(minimp3::Error::Eof) => break,
+            Err(e) => {
+                log::warn!("Error decoding MP3 for duration calculation: {}", e);
+                break;
+            }
+        }
+    }
+
+    let duration_ms = if sample_rate > 0 {
+        (total_samples * 1000) / sample_rate as u64
+    } else {
+        0
+    };
+
+    Ok((duration_ms, sample_rate))
 }
 
 fn extract_audio_from_frame(data: &[u8]) -> Option<Vec<u8>> {
