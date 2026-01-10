@@ -3,7 +3,10 @@
 // 不再直接操作数据库，由 history-db-writer 负责保存对话历史
 
 use dora_node_api::{
-    arrow::array::{Array, StringArray, UInt8Array},
+    arrow::{
+        array::{Array, StringArray, UInt8Array},
+        json,
+    },
     ArrowData, DoraNode, Event,
 };
 use eyre::{Context, Result};
@@ -267,22 +270,8 @@ async fn perform_tts_websocket(
     log::debug!("Received ConnectionStarted");
 
     // 2. 发送 StartSession
-    let session_meta = json!({
-        "user": {
-            "uid": "user_001"
-        },
-        "req_params": {
-            "speaker": speaker,
-            "audio_params": {
-                "format": "mp3",
-                "sample_rate": 24000,
-                "speech_rate": speech_rate
-            }
-        }
-    });
     println!("==================3");
-    let start_session_frame =
-        build_event_frame(EVENT_START_SESSION, Some(&session_id), session_meta);
+    let start_session_frame = build_event_frame(EVENT_START_SESSION, Some(&session_id), json!({}));
     write.send(Message::Binary(start_session_frame)).await?;
     log::debug!("Sent StartSession");
 
@@ -294,7 +283,19 @@ async fn perform_tts_websocket(
 
     // 3. 发送 TaskRequest (文本)
     let task_payload = json!({
-        "text": text
+        "text": "你好, 你好，欢迎使用豆包语音合成服务！",
+    });
+    let task_payload = json!({
+        "user": session_id,
+        "req_params": {
+            "speaker": speaker,
+            "audio_params": {
+                "format": "mp3",
+                "sample_rate": 24000,
+                "speech_rate": speech_rate
+            },
+            "text": "你好, 你好，欢迎使用豆包语音合成服务！",
+        }
     });
     let task_frame = build_event_frame(EVENT_TASK_REQUEST, Some(&session_id), task_payload);
     println!("==================6");
@@ -315,9 +316,9 @@ async fn perform_tts_websocket(
 
                 println!("==================10");
                 let event = parse_event(&data)?;
-                println!("==================10 -- 0");
+                println!("==================10 -- 0?");
                 log::debug!("Received event: {}", event);
-                println!("Received event: {}", event);
+                println!("Received eventd: {}", event);
 
                 match event {
                     EVENT_TTS_RESPONSE => {
@@ -334,7 +335,7 @@ async fn perform_tts_websocket(
                         break;
                     }
                     _ => {
-                        log::debug!("Received evenxxx: {}", event);
+                        println!("Received evenxxx: {} {:?}", event, data);
                     }
                 }
             }
@@ -402,9 +403,10 @@ fn build_event_frame(event: i32, session_id: Option<&str>, payload: serde_json::
     }
 
     // Payload
-    let payload_bytes = payload.to_string().into_bytes();
-    frame.extend_from_slice(&(payload_bytes.len() as u32).to_be_bytes());
-    frame.extend_from_slice(&payload_bytes);
+    let payload = payload.to_string();
+    let payload = payload.as_bytes();
+    frame.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+    frame.extend_from_slice(payload);
 
     frame
 }

@@ -106,7 +106,7 @@ nodes:
       DOUBAO_API_KEY: ${DOUBAO_API_KEY:-}
       DOUBAO_ACCESS_TOKEN: ${DOUBAO_ACCESS_TOKEN:-sHwjR_1a0NFkHM7MsunXmATw_127m82o}
       DOUBAO_RESOURCE_ID: ${DOUBAO_RESOURCE_ID:-seed-tts-2.0}  # 豆包语音合成模型2.0
-      VOICE_TYPE: ${VOICE_TYPE:-zh_female_cancan_mars_bigtts}  # 默认中文女声
+      VOICE_TYPE: ${VOICE_TYPE:-zh_female_vv_uranus_bigtts}  # 默认中文女声
       SPEED_RATIO: 1.0
       LOG_LEVEL: INFO
       RUST_LOG: info
