@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
     println!("=========api_key4: {}", api_key);
     
     let model = std::env::var("DOUBAO_MODEL")
-        .unwrap_or_else(|_| "doubao-pro-32k".to_string());
+        .unwrap_or_else(|_| "doubao-seed-1-8-251228".to_string());
 
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(30))
@@ -161,7 +161,7 @@ async fn generate_topic(
     });
 
     let response = client
-        .post("https://ark.cn-beijing.volces.com/api/v3/chat/completions")
+        .post("https://ark.cn-beijing.volces.com/api/v3/responses")
         .header(header::AUTHORIZATION, format!("Bearer {}", api_key))
         .header(header::CONTENT_TYPE, "application/json")
         .json(&payload)

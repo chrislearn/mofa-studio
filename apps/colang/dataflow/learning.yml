@@ -129,7 +129,7 @@ nodes:
 
   # 豆包 TTS - 文字转语音 (美式英语)
   - id: doubao-tts
-    build: cargo build --manifest-path ../../../rust-nodes/dora-doubao-tts/Cargo.toml
+    # build: cargo build --manifest-path ../../../rust-nodes/dora-doubao-tts/Cargo.toml
     path: ../../../target/debug/dora-doubao-tts
     inputs:
       text: english-teacher/text

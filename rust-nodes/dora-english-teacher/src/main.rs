@@ -95,7 +95,9 @@ async fn main() -> Result<()> {
     println!("=========api_key1: {}", api_key);
     
     let model = std::env::var("DOUBAO_MODEL")
-        .unwrap_or_else(|_| "doubao-pro-32k".to_string());
+        .unwrap_or_else(|_| "doubao-seed-1-8-251228".to_string());
+    println!("=========model1??: {}", model);
+    let model = "doubao-seed-1-8-251228".to_string(); // 强制使用该模型，test
     
     let system_prompt = std::env::var("SYSTEM_PROMPT")
         .unwrap_or_else(|_| DEFAULT_SYSTEM_PROMPT.to_string());
@@ -145,7 +147,6 @@ async fn main() -> Result<()> {
                     "text_input" => {
                         // 处理直接文本输入 (纯文本)
                         log::info!("Received direct text input");
-                        
                         if let Some(bytes) = &raw_data {
                             let text = String::from_utf8_lossy(bytes).to_string();
                             if text.trim().is_empty() {
@@ -178,7 +179,6 @@ async fn main() -> Result<()> {
                 };
                 
                 log::info!("Processing user input: {}", user_text);
-                
                 // 添加用户消息到历史
                 {
                     let mut hist = history.lock().unwrap();
@@ -302,7 +302,7 @@ async fn generate_response(
     });
 
     let response = client
-        .post("https://ark.cn-beijing.volces.com/api/v3/chat/completions")
+        .post("https://ark.cn-beijing.volces.com/api/v3/responses")
         .header(header::AUTHORIZATION, format!("Bearer {}", api_key))
         .header(header::CONTENT_TYPE, "application/json")
         .json(&payload)

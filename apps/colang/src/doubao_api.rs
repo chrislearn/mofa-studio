@@ -460,7 +460,7 @@ impl DoubaoClient {
         });
 
         let request = ChatRequest {
-            model: "doubao-pro-32k".to_string(),
+            model: "doubao-seed-1-8-251228".to_string(),
             messages,
             temperature: 0.8,
             max_tokens: 500,
@@ -488,7 +488,7 @@ impl DoubaoClient {
         ];
 
         let request = ChatRequest {
-            model: "doubao-pro-32k".to_string(),
+            model: "doubao-seed-1-8-251228".to_string(),
             messages,
             temperature: 0.3,
             max_tokens: 1000,
