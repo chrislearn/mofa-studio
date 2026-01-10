@@ -1,11 +1,14 @@
 // Dora Node: English Teacher
 // AI 英语老师 - 使用豆包 API 生成对话回复和语法分析
 // 使用 structured outputs 一次性输出: 用户文本 + AI回复 + 语法分析
-// 输出: report_text (JSON: {session_id, user_text, ai_reply, issues[], pronunciation_issues[]})
+// 输出: json_data (JSON: {session_id, user_text, reply_text, issues[], pronunciation_issues[]})
 
-use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}};
+use dora_node_api::{
+    arrow::array::{Array, StringArray, UInt8Array},
+    DoraNode, Event,
+};
 use eyre::{Context, Result};
-use reqwest::{Client, header};
+use reqwest::{header, Client};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::VecDeque;
@@ -33,7 +36,7 @@ struct WordTiming {
 /// 对话消息
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ChatMessage {
-    role: String,  // "user" | "assistant" | "system"
+    role: String, // "user" | "assistant" | "system"
     content: String,
 }
 
@@ -50,7 +53,7 @@ impl ConversationHistory {
             max_history,
         }
     }
-    
+
     fn add_user_message(&mut self, content: &str) {
         self.messages.push_back(ChatMessage {
             role: "user".to_string(),
@@ -58,7 +61,7 @@ impl ConversationHistory {
         });
         self.trim_history();
     }
-    
+
     fn add_assistant_message(&mut self, content: &str) {
         self.messages.push_back(ChatMessage {
             role: "assistant".to_string(),
@@ -66,13 +69,13 @@ impl ConversationHistory {
         });
         self.trim_history();
     }
-    
+
     fn trim_history(&mut self) {
         while self.messages.len() > self.max_history * 2 {
             self.messages.pop_front();
         }
     }
-    
+
     fn get_messages(&self) -> Vec<&ChatMessage> {
         self.messages.iter().collect()
     }
@@ -83,9 +86,9 @@ impl ConversationHistory {
 #[derive(Debug, Serialize, Deserialize)]
 struct ComprehensiveResponse {
     session_id: String,
-    user_text: String,          // 用户最后一条消息
-    ai_reply: String,           // AI对该消息的回复
-    issues: Vec<TextIssue>,     // 语法/用词问题
+    user_text: String,                             // 用户最后一条消息
+    reply_text: String,                            // AI对该消息的回复
+    issues: Vec<TextIssue>,                        // 语法/用词问题
     pronunciation_issues: Vec<PronunciationIssue>, // 发音问题
     timestamp: i64,
 }
@@ -94,12 +97,12 @@ struct ComprehensiveResponse {
 #[derive(Debug, Serialize, Deserialize)]
 struct TextIssue {
     #[serde(rename = "type")]
-    issue_type: String,     // grammar | word_choice | suggestion
+    issue_type: String, // grammar | word_choice | suggestion
     original: String,
     suggested: String,
     description: String,
-    severity: String,       // low | medium | high
-    
+    severity: String, // low | medium | high
+
     #[serde(default)]
     start_position: Option<i32>,
     #[serde(default)]
@@ -116,17 +119,17 @@ struct PronunciationIssue {
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    
-    let api_key = std::env::var("DOUBAO_API_KEY")
-        .wrap_err("DOUBAO_API_KEY environment variable not set")?;
+
+    let api_key =
+        std::env::var("DOUBAO_API_KEY").wrap_err("DOUBAO_API_KEY environment variable not set")?;
     log::info!("DOUBAO_API_KEY loaded");
-    
-    let model = std::env::var("DOUBAO_MODEL")
-        .unwrap_or_else(|_| "doubao-seed-1-8-251228".to_string());
-    
-    let system_prompt = std::env::var("SYSTEM_PROMPT")
-        .unwrap_or_else(|_| DEFAULT_SYSTEM_PROMPT.to_string());
-    
+
+    let model =
+        std::env::var("DOUBAO_MODEL").unwrap_or_else(|_| "doubao-seed-1-8-251228".to_string());
+
+    let system_prompt =
+        std::env::var("SYSTEM_PROMPT").unwrap_or_else(|_| DEFAULT_SYSTEM_PROMPT.to_string());
+
     let max_history: usize = std::env::var("MAX_HISTORY")
         .unwrap_or_else(|_| "10".to_string())
         .parse()
@@ -137,11 +140,11 @@ async fn main() -> Result<()> {
         .build()?;
 
     let (mut node, mut events) = DoraNode::init_from_env()?;
-    
+
     // 对话历史
     let history = Mutex::new(ConversationHistory::new(max_history));
     let current_session: Mutex<Option<String>> = Mutex::new(None);
-    
+
     log::info!("English Teacher node started (model: {})", model);
 
     while let Some(event) = events.recv() {
@@ -158,7 +161,11 @@ async fn main() -> Result<()> {
                                     if asr_result.text.trim().is_empty() {
                                         continue;
                                     }
-                                    (asr_result.text, asr_result.session_id, Some(asr_result.words))
+                                    (
+                                        asr_result.text,
+                                        asr_result.session_id,
+                                        Some(asr_result.words),
+                                    )
                                 }
                                 Err(e) => {
                                     log::error!("Failed to parse ASR output: {}", e);
@@ -187,7 +194,7 @@ async fn main() -> Result<()> {
                         continue;
                     }
                 };
-                
+
                 // 更新或获取 session ID
                 let session = {
                     let mut current = current_session.lock().unwrap();
@@ -202,16 +209,16 @@ async fn main() -> Result<()> {
                         })
                     }
                 };
-                
+
                 log::info!("Processing user input: {}", user_text);
                 // 添加用户消息到历史
                 {
                     let mut hist = history.lock().unwrap();
                     hist.add_user_message(&user_text);
                 }
-                
+
                 // 使用 structured outputs 一次性生成回复和分析
-                match generate_comprehensive_response(
+                let response = generate_comprehensive_response(
                     &client,
                     &api_key,
                     &model,
@@ -220,50 +227,64 @@ async fn main() -> Result<()> {
                     &history.lock().unwrap(),
                     &session,
                     words.as_ref(),
-                ).await {
+                )
+                .await;
+                match response {
                     Ok(response) => {
-                        log::info!("AI reply: {}", response.ai_reply);
-                        log::info!("Found {} issues, {} pronunciation issues", 
-                            response.issues.len(), 
+                        log::info!("AI reply: {}", response.reply_text);
+                        log::info!(
+                            "Found issues: {:#?}, {} pronunciation issues",
+                            response.issues,
                             response.pronunciation_issues.len()
                         );
-                        
+
                         // 添加 AI 回复到历史
                         {
                             let mut hist = history.lock().unwrap();
-                            hist.add_assistant_message(&response.ai_reply);
+                            hist.add_assistant_message(&response.reply_text);
                         }
-                        
-                        // 发送综合 JSON 输出 (report_text)
+
+                        println!("====================techer 2");
+                        // 发送综合 JSON 输出 (json_data)
                         let output_str = serde_json::to_string(&response)?;
                         let output_array = StringArray::from(vec![output_str.as_str()]);
                         node.send_output(
-                            "report_text".to_string().into(),
+                            "json_data".to_string().into(),
                             metadata.parameters.clone(),
                             output_array,
                         )?;
-                        
+
+                        println!("====================techer 3");
                         // 发送状态
                         let status = json!({
                             "node": "english-teacher",
                             "status": "ok",
                             "session_id": session,
                         });
-                        
+
                         let status_array = StringArray::from(vec![status.to_string().as_str()]);
-                        node.send_output("status".to_string().into(), metadata.parameters.clone(), status_array)?;
+                        println!("====================techer 4");
+                        node.send_output(
+                            "status".to_string().into(),
+                            metadata.parameters.clone(),
+                            status_array,
+                        )?;
                     }
                     Err(e) => {
                         log::error!("Failed to generate comprehensive response: {}", e);
-                        
+
                         let status = json!({
                             "node": "english-teacher",
                             "status": "error",
                             "error": e.to_string(),
                         });
-                        
+
                         let status_array = StringArray::from(vec![status.to_string().as_str()]);
-                        node.send_output("status".to_string().into(), metadata.parameters.clone(), status_array)?;
+                        node.send_output(
+                            "status".to_string().into(),
+                            metadata.parameters.clone(),
+                            status_array,
+                        )?;
                     }
                 }
             }
@@ -331,7 +352,7 @@ async fn generate_comprehensive_response(
     let response_schema = json!({
         "type": "object",
         "properties": {
-            "ai_reply": {
+            "reply_text": {
                 "type": "string",
                 "description": "Your natural conversational response to the user in English. Keep it concise and encouraging."
             },
@@ -377,7 +398,7 @@ async fn generate_comprehensive_response(
                 }
             }
         },
-        "required": ["ai_reply", "issues"],
+        "required": ["reply_text", "issues"],
         "additionalProperties": false
     });
 
@@ -396,6 +417,7 @@ async fn generate_comprehensive_response(
         "max_tokens": 2000
     });
 
+    println!("Request payload");
     let response = client
         .post("https://ark.cn-beijing.volces.com/api/v3/chat/completions")
         .header(header::AUTHORIZATION, format!("Bearer {}", api_key))
@@ -404,31 +426,34 @@ async fn generate_comprehensive_response(
         .send()
         .await?;
 
+    println!("Request payload 1");
     if !response.status().is_success() {
         let error_text = response.text().await?;
         eyre::bail!("API error: {}", error_text);
     }
 
+    println!("Request payload 2");
     let result: serde_json::Value = response.json().await?;
+    println!("Request payload 13");
 
     // Extract content from Chat Completions response
     let content = result["choices"][0]["message"]["content"]
         .as_str()
         .ok_or_else(|| eyre::eyre!("No content in response"))?;
 
+    println!("Request payload 4");
     log::debug!("Structured response: {}", content);
 
     // Parse structured JSON response
     let structured: serde_json::Value = serde_json::from_str(content)?;
 
-    let ai_reply = structured["ai_reply"]
+    let reply_text = structured["reply_text"]
         .as_str()
-        .ok_or_else(|| eyre::eyre!("Missing ai_reply in structured response"))?
+        .ok_or_else(|| eyre::eyre!("Missing reply in structured response"))?
         .to_string();
 
-    let issues: Vec<TextIssue> = serde_json::from_value(
-        structured["issues"].clone()
-    ).unwrap_or_default();
+    let issues: Vec<TextIssue> =
+        serde_json::from_value(structured["issues"].clone()).unwrap_or_default();
 
     // Collect pronunciation issues from ASR word timings
     let pronunciation_issues = if let Some(word_timings) = words {
@@ -447,7 +472,7 @@ async fn generate_comprehensive_response(
     Ok(ComprehensiveResponse {
         session_id: session_id.to_string(),
         user_text: user_text.to_string(),
-        ai_reply,
+        reply_text,
         issues,
         pronunciation_issues,
         timestamp: chrono::Utc::now().timestamp(),
@@ -457,7 +482,7 @@ async fn generate_comprehensive_response(
 /// 从 ArrowData 提取字节
 fn extract_bytes(data: &dora_node_api::ArrowData) -> Option<Vec<u8>> {
     use dora_node_api::arrow::datatypes::DataType;
-    
+
     let array = &data.0;
     match array.data_type() {
         DataType::UInt8 => {

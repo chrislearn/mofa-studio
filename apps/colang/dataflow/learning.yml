@@ -6,8 +6,8 @@
 # 1. mofa-text-input: 用户文本输入 (仅输出 text, 无 control)
 # 2. mofa-mic-input: 用户语音输入 (仅输出 audio, 无 control)
 # 3. doubao-asr: 语音转文字 (接收 mofa-mic-input/audio)
-# 4. english-teacher: AI 对话生成 + 语法/词汇分析 (接收 asr 或 text, 输出 text 和 report_text)
-# 5. learning-db-writer: 写入学习问题到数据库 (接收 english-teacher/report_text)
+# 4. english-teacher: AI 对话生成 + 语法/词汇分析 (接收 asr 或 text, 输出 text 和 json_data)
+# 5. learning-db-writer: 写入学习问题到数据库 (接收 english-teacher/json_data)
 # 6. doubao-tts: 文字转语音 (接收 english-teacher/text)
 # 7. mofa-audio-player: 播放语音 (接收 doubao-tts/audio)
 # 8. history-db-writer: 保存对话历史 (接收 asr 和 english-teacher 输出)
@@ -56,7 +56,7 @@ nodes:
     path: ../../../target/debug/dora-learning-db-writer
     inputs:
       user_text: doubao-asr/text            # 用户文本（来自ASR或文本输入）
-      ai_json: english-teacher/report_text  # AI综合响应JSON
+      ai_json: english-teacher/json_data  # AI综合响应JSON
     outputs:
       - result        # 存储结果 (success, conversations_stored, issues_stored, pronunciation_issues_stored)
       - status
@@ -77,7 +77,7 @@ nodes:
       asr_text: doubao-asr/text             # ASR 转换的文字
       text_input: mofa-text-input/text      # 直接文字输入
     outputs:
-      - report_text   # 综合响应JSON (session_id, user_text, ai_reply, issues[], pronunciation_issues[])
+      - json_data   # 综合响应JSON (session_id, user_text, reply_text, issues[], pronunciation_issues[])
       - status
       - log
     env:
@@ -95,7 +95,7 @@ nodes:
     # build: cargo build --manifest-path ../../../rust-nodes/dora-doubao-tts/Cargo.toml
     path: ../../../target/debug/dora-doubao-tts
     inputs:
-      text: english-teacher/report_text  # 从JSON中提取ai_reply字段
+      text: english-teacher/json_data  # 从JSON中提取reply_text字段
     outputs:
       - audio
       - status
@@ -138,7 +138,7 @@ nodes:
         source: mofa-text-input/text
         queue_size: 1000
       ai_json:
-        source: english-teacher/report_text
+        source: english-teacher/json_data
         queue_size: 100
     outputs:
       - status
@@ -166,7 +166,7 @@ nodes:
         queue_size: 1000
       teacher_status: english-teacher/status
       teacher_report:
-        source: english-teacher/report_text
+        source: english-teacher/json_data
         queue_size: 1000
       
       # TTS logs

@@ -4,7 +4,10 @@
 // 1. 接收 user_text 输入（纯文本），存储用户消息到 conversations 表
 // 2. 接收 ai_json 输入（综合JSON），存储用户消息+AI回复+语法分析到数据库
 
-use dora_node_api::{DoraNode, Event, arrow::array::{Array, StringArray, UInt8Array}};
+use dora_node_api::{
+    arrow::array::{Array, StringArray, UInt8Array},
+    DoraNode, Event,
+};
 use eyre::{Context, Result};
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqlitePool;
@@ -15,7 +18,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 struct ComprehensiveResponse {
     session_id: String,
     user_text: String,
-    ai_reply: String,
+    reply_text: String,
     issues: Vec<TextIssue>,
     pronunciation_issues: Vec<PronunciationIssue>,
     timestamp: i64,
@@ -72,49 +75,56 @@ struct StorageResult {
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    
+
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "sqlite://learning_companion.db".to_string());
-    
-    log::info!("Learning DB Writer connecting to database: {}", database_url);
+
+    log::info!(
+        "Learning DB Writer connecting to database: {}",
+        database_url
+    );
     let pool = SqlitePool::connect(&database_url)
         .await
         .wrap_err("Failed to connect to database")?;
 
     let (mut node, mut events) = DoraNode::init_from_env()?;
-    
+
     log::info!("Learning DB Writer node started");
 
     while let Some(event) = events.recv() {
         match event {
             Event::Input { id, data, metadata } => {
                 let raw_data = extract_bytes(&data);
-                
+
                 match id.as_str() {
                     "user_text" => {
                         // 处理纯文本用户输入（来自 mofa-text-input 或 doubao-asr）
                         log::info!("Received user text input");
-                        
+
                         if raw_data.is_empty() {
                             log::warn!("Empty user text received");
                             continue;
                         }
-                        
+
                         // 尝试解析为 ASR 输出（JSON）或纯文本
-                        let (user_text, session_id) = if let Ok(asr) = serde_json::from_slice::<AsrOutput>(&raw_data) {
-                            (asr.text, asr.session_id.unwrap_or_else(|| "default".to_string()))
-                        } else {
-                            let text = String::from_utf8_lossy(&raw_data).to_string();
-                            (text, "default".to_string())
-                        };
-                        
+                        let (user_text, session_id) =
+                            if let Ok(asr) = serde_json::from_slice::<AsrOutput>(&raw_data) {
+                                (
+                                    asr.text,
+                                    asr.session_id.unwrap_or_else(|| "default".to_string()),
+                                )
+                            } else {
+                                let text = String::from_utf8_lossy(&raw_data).to_string();
+                                (text, "default".to_string())
+                            };
+
                         if user_text.trim().is_empty() {
                             log::debug!("Empty text, skipping storage");
                             continue;
                         }
-                        
+
                         log::info!("Storing user message: {}", user_text);
-                        
+
                         let mut result = StorageResult {
                             success: true,
                             conversations_stored: 0,
@@ -122,7 +132,7 @@ async fn main() -> Result<()> {
                             pronunciation_issues_stored: 0,
                             error: None,
                         };
-                        
+
                         match save_conversation(&pool, &session_id, "user", &user_text).await {
                             Ok(_) => result.conversations_stored += 1,
                             Err(e) => {
@@ -131,26 +141,26 @@ async fn main() -> Result<()> {
                                 result.error = Some(e.to_string());
                             }
                         }
-                        
+
                         send_result(&mut node, &metadata, &result)?;
                     }
                     "ai_json" => {
-                        // 处理综合 JSON 输入（来自 english-teacher/report_text）
+                        // 处理综合 JSON 输入（来自 english-teacher/json_data）
                         log::info!("Received AI JSON data");
-                        
+
                         if raw_data.is_empty() {
                             log::warn!("Empty AI JSON received");
                             continue;
                         }
-                        
+
                         match serde_json::from_slice::<ComprehensiveResponse>(&raw_data) {
                             Ok(response) => {
                                 log::info!(
                                     "Storing comprehensive response: user='{}', ai='{}', {} issues, {} pronunciation issues",
-                                    response.user_text, response.ai_reply,
+                                    response.user_text, response.reply_text,
                                     response.issues.len(), response.pronunciation_issues.len()
                                 );
-                                
+
                                 let mut result = StorageResult {
                                     success: true,
                                     conversations_stored: 0,
@@ -158,9 +168,16 @@ async fn main() -> Result<()> {
                                     pronunciation_issues_stored: 0,
                                     error: None,
                                 };
-                                
+
                                 // 1. 存储用户消息到 conversations
-                                match save_conversation(&pool, &response.session_id, "user", &response.user_text).await {
+                                match save_conversation(
+                                    &pool,
+                                    &response.session_id,
+                                    "user",
+                                    &response.user_text,
+                                )
+                                .await
+                                {
                                     Ok(_) => result.conversations_stored += 1,
                                     Err(e) => {
                                         log::error!("Failed to save user conversation: {}", e);
@@ -168,18 +185,31 @@ async fn main() -> Result<()> {
                                         result.error = Some(e.to_string());
                                     }
                                 }
-                                
+
                                 // 2. 存储 AI 回复到 conversations
-                                match save_conversation(&pool, &response.session_id, "assistant", &response.ai_reply).await {
+                                match save_conversation(
+                                    &pool,
+                                    &response.session_id,
+                                    "assistant",
+                                    &response.reply_text,
+                                )
+                                .await
+                                {
                                     Ok(_) => result.conversations_stored += 1,
                                     Err(e) => {
                                         log::error!("Failed to save AI conversation: {}", e);
                                         result.success = false;
                                     }
                                 }
-                                
+
                                 // 3. 获取 conversation ID 用于关联 annotations
-                                let conv_id = match get_latest_conversation_id(&pool, &response.session_id, "user").await {
+                                let conv_id = match get_latest_conversation_id(
+                                    &pool,
+                                    &response.session_id,
+                                    "user",
+                                )
+                                .await
+                                {
                                     Ok(id) => id,
                                     Err(e) => {
                                         log::error!("Failed to get conversation ID: {}", e);
@@ -187,10 +217,17 @@ async fn main() -> Result<()> {
                                         continue;
                                     }
                                 };
-                                
+
                                 // 4. 存储语法/用词问题
                                 for issue in &response.issues {
-                                    match save_text_issue(&pool, conv_id, issue, &response.user_text).await {
+                                    match save_text_issue(
+                                        &pool,
+                                        conv_id,
+                                        issue,
+                                        &response.user_text,
+                                    )
+                                    .await
+                                    {
                                         Ok(_) => result.issues_stored += 1,
                                         Err(e) => {
                                             log::error!("Failed to save text issue: {}", e);
@@ -198,30 +235,35 @@ async fn main() -> Result<()> {
                                         }
                                     }
                                 }
-                                
+
                                 // 5. 存储发音问题
                                 for p_issue in &response.pronunciation_issues {
                                     match save_pronunciation_issue(
                                         &pool,
                                         &p_issue.word,
                                         p_issue.confidence,
-                                        &response.user_text
-                                    ).await {
+                                        &response.user_text,
+                                    )
+                                    .await
+                                    {
                                         Ok(_) => result.pronunciation_issues_stored += 1,
                                         Err(e) => {
-                                            log::error!("Failed to save pronunciation issue: {}", e);
+                                            log::error!(
+                                                "Failed to save pronunciation issue: {}",
+                                                e
+                                            );
                                             result.success = false;
                                         }
                                     }
                                 }
-                                
+
                                 log::info!(
                                     "Storage complete: {} conversations, {} issues, {} pronunciation issues",
                                     result.conversations_stored,
                                     result.issues_stored,
                                     result.pronunciation_issues_stored
                                 );
-                                
+
                                 send_result(&mut node, &metadata, &result)?;
                             }
                             Err(e) => {
@@ -255,15 +297,13 @@ async fn save_conversation(
     speaker: &str,
     text: &str,
 ) -> Result<i64> {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)?
-        .as_secs() as i64;
-    
+    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
+
     let result = sqlx::query(
         r#"
         INSERT INTO conversations (session_id, speaker, text, created_at)
         VALUES (?, ?, ?, ?)
-        "#
+        "#,
     )
     .bind(session_id)
     .bind(speaker)
@@ -271,7 +311,7 @@ async fn save_conversation(
     .bind(now)
     .execute(pool)
     .await?;
-    
+
     Ok(result.last_insert_rowid())
 }
 
@@ -287,13 +327,13 @@ async fn get_latest_conversation_id(
         WHERE session_id = ? AND speaker = ?
         ORDER BY created_at DESC 
         LIMIT 1
-        "#
+        "#,
     )
     .bind(session_id)
     .bind(speaker)
     .fetch_one(pool)
     .await?;
-    
+
     Ok(id)
 }
 
@@ -304,10 +344,8 @@ async fn save_text_issue(
     issue: &TextIssue,
     context: &str,
 ) -> Result<()> {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)?
-        .as_secs() as i64;
-    
+    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
+
     // 保存到 conversation_annotations
     let annotation_type = match issue.issue_type.as_str() {
         "grammar" => "grammar_error",
@@ -324,7 +362,7 @@ async fn save_text_issue(
             original_text, suggested_text,
             description, severity, created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#
+        "#,
     )
     .bind(conversation_id)
     .bind(annotation_type)
@@ -337,10 +375,10 @@ async fn save_text_issue(
     .bind(now)
     .execute(pool)
     .await?;
-    
+
     // 提取单词并保存到 issue_words
     let words: Vec<&str> = issue.original.split_whitespace().collect();
-    
+
     let issue_type_db = match issue.issue_type.as_str() {
         "grammar" => "grammar",
         "word_choice" => "usage",
@@ -348,8 +386,10 @@ async fn save_text_issue(
     };
 
     for word in words {
-        let clean_word = word.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
-        
+        let clean_word = word
+            .trim_matches(|c: char| !c.is_alphanumeric())
+            .to_lowercase();
+
         if clean_word.len() < 2 {
             continue;
         }
@@ -364,7 +404,7 @@ async fn save_text_issue(
                 issue_description = excluded.issue_description,
                 context = excluded.context,
                 difficulty_level = MAX(difficulty_level, 3)
-            "#
+            "#,
         )
         .bind(&clean_word)
         .bind(issue_type_db)
@@ -385,17 +425,20 @@ async fn save_pronunciation_issue(
     confidence: f32,
     context: &str,
 ) -> Result<()> {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)?
-        .as_secs() as i64;
-    
-    let clean_word = word.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
-    
+    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
+
+    let clean_word = word
+        .trim_matches(|c: char| !c.is_alphanumeric())
+        .to_lowercase();
+
     if clean_word.len() < 2 {
         return Ok(());
     }
 
-    let description = format!("Low confidence in pronunciation (confidence: {:.2})", confidence);
+    let description = format!(
+        "Low confidence in pronunciation (confidence: {:.2})",
+        confidence
+    );
 
     sqlx::query(
         r#"
@@ -406,7 +449,7 @@ async fn save_pronunciation_issue(
         ON CONFLICT(word, issue_type) DO UPDATE SET
             difficulty_level = MIN(difficulty_level + 1, 5),
             issue_description = excluded.issue_description
-        "#
+        "#,
     )
     .bind(&clean_word)
     .bind(&description)
@@ -433,7 +476,7 @@ fn extract_bytes(data: &dora_node_api::ArrowData) -> Vec<u8> {
 fn send_result(
     node: &mut DoraNode,
     _metadata: &dora_node_api::Metadata,
-    result: &StorageResult
+    result: &StorageResult,
 ) -> Result<()> {
     let output_str = serde_json::to_string(result)?;
     let output_array = StringArray::from(vec![output_str.as_str()]);

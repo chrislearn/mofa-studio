@@ -12,12 +12,12 @@ use reqwest::{header, Client};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-/// 综合响应格式 (来自 english-teacher/report_text)
+/// 综合响应格式 (来自 english-teacher/json_data)
 #[derive(Debug, Serialize, Deserialize)]
 struct ComprehensiveResponse {
     session_id: String,
     user_text: String,
-    ai_reply: String,
+    reply_text: String,
     issues: Vec<serde_json::Value>,
     pronunciation_issues: Vec<serde_json::Value>,
     timestamp: i64,
@@ -77,11 +77,11 @@ async fn main() -> Result<()> {
                     "text" => {
                         log::debug!("Received text input");
 
-                        // 尝试解析为 ComprehensiveResponse (来自 english-teacher/report_text)
+                        // 尝试解析为 ComprehensiveResponse (来自 english-teacher/json_data)
                         let text_to_convert = if let Ok(comprehensive_response) =
                             serde_json::from_slice::<ComprehensiveResponse>(&raw_data)
                         {
-                            comprehensive_response.ai_reply
+                            comprehensive_response.reply_text
                         } else if let Ok(text_input) =
                             serde_json::from_slice::<TextInput>(&raw_data)
                         {
