@@ -122,7 +122,7 @@ async fn main() -> Result<()> {
 
     let api_key =
         std::env::var("DOUBAO_API_KEY").wrap_err("DOUBAO_API_KEY environment variable not set")?;
-    log::info!("DOUBAO_API_KEY loaded");
+    log::info!("DOUBAO_API_KEY {api_key}");
 
     let model =
         std::env::var("DOUBAO_MODEL").unwrap_or_else(|_| "doubao-seed-1-8-251228".to_string());
