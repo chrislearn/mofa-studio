@@ -3,10 +3,7 @@
 // 不再直接操作数据库，由 history-db-writer 负责保存对话历史
 
 use dora_node_api::{
-    arrow::{
-        array::{Array, StringArray, UInt8Array},
-        json,
-    },
+    arrow::array::{Array, StringArray, UInt8Array},
     ArrowData, DoraNode, Event,
 };
 use eyre::{Context, Result};
@@ -46,7 +43,6 @@ const MSG_TYPE_FULL_CLIENT: u8 = 0x14; // Full-client request with event
 const MSG_TYPE_FULL_SERVER: u8 = 0x94; // Full-server response with event
 const MSG_TYPE_AUDIO_ONLY: u8 = 0xB4; // Audio-only response with event
 const SERIALIZATION_JSON: u8 = 0x10; // JSON serialization
-const SERIALIZATION_RAW: u8 = 0x00; // Raw (binary audio)
 const NO_COMPRESSION: u8 = 0x00;
 const RESERVED: u8 = 0x00;
 
@@ -271,7 +267,27 @@ async fn perform_tts_websocket(
 
     // 2. 发送 StartSession
     println!("==================3");
-    let start_session_frame = build_event_frame(EVENT_START_SESSION, Some(&session_id), json!({}));
+    let user_id = uuid::Uuid::new_v4().to_string();
+    let start_session_payload = json!({
+        "user": {
+            "uid": user_id
+        },
+        "event": EVENT_START_SESSION,
+        "namespace": "BidirectionalTTS",
+        "req_params": {
+            "speaker": speaker,
+            "audio_params": {
+                "format": "mp3",
+                "sample_rate": 24000,
+                "speech_rate": speech_rate,
+                "enable_timestamp": true
+            },
+            "additions": json!({
+                "disable_markdown_filter": false
+            }).to_string()
+        }
+    });
+    let start_session_frame = build_event_frame(EVENT_START_SESSION, Some(&session_id), start_session_payload);
     write.send(Message::Binary(start_session_frame)).await?;
     log::debug!("Sent StartSession");
 
@@ -283,18 +299,23 @@ async fn perform_tts_websocket(
 
     // 3. 发送 TaskRequest (文本)
     let task_payload = json!({
-        "text": "你好, 你好，欢迎使用豆包语音合成服务！",
-    });
-    let task_payload = json!({
-        "user": session_id,
+        "user": {
+            "uid": user_id
+        },
+        "event": EVENT_TASK_REQUEST,
+        "namespace": "BidirectionalTTS",
         "req_params": {
             "speaker": speaker,
             "audio_params": {
                 "format": "mp3",
                 "sample_rate": 24000,
-                "speech_rate": speech_rate
+                "speech_rate": speech_rate,
+                "enable_timestamp": true
             },
-            "text": "你好, 你好，欢迎使用豆包语音合成服务！",
+            "text": "你好啦, 哈哈哈 额外,门卫",
+            "additions": json!({
+                "disable_markdown_filter": false
+            }).to_string()
         }
     });
     let task_frame = build_event_frame(EVENT_TASK_REQUEST, Some(&session_id), task_payload);
@@ -325,8 +346,9 @@ async fn perform_tts_websocket(
                         println!("==================11");
                         // 提取音频数据
                         if let Some(audio) = extract_audio_from_frame(&data) {
-                            println!("==================12");
+                            println!("==================12 audio {}", audio.len());
                             audio_data.extend_from_slice(&audio);
+                            println!("==================12 audio 1");
                         }
                     }
                     EVENT_SESSION_FINISHED => {
