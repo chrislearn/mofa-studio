@@ -2,6 +2,8 @@
 // Converts AI text responses to speech using Doubao Volcanic Engine Bidirectional WebSocket API
 // 不再直接操作数据库，由 history-db-writer 负责保存对话历史
 
+use std::fs;
+
 use dora_node_api::{
     arrow::array::{Array, StringArray, UInt8Array},
     ArrowData, DoraNode, Event,
@@ -241,7 +243,6 @@ async fn perform_tts_websocket(
         .header("X-Api-Connect-Id", &connect_id)
         .body(())?;
 
-    println!("===========resource_id in header: {}", resource_id);
     // 建立 WebSocket 连接
     let (ws_stream, response) = connect_async(request).await.unwrap();
 
@@ -260,13 +261,11 @@ async fn perform_tts_websocket(
     write.send(Message::Binary(start_conn_frame)).await?;
     log::debug!("Sent StartConnection");
 
-    println!("=================2");
     // 等待 ConnectionStarted
     wait_for_event(&mut read, EVENT_CONNECTION_STARTED).await?;
     log::debug!("Received ConnectionStarted");
 
     // 2. 发送 StartSession
-    println!("==================3");
     let user_id = uuid::Uuid::new_v4().to_string();
     let start_session_payload = json!({
         "user": {
@@ -287,14 +286,16 @@ async fn perform_tts_websocket(
             }).to_string()
         }
     });
-    let start_session_frame = build_event_frame(EVENT_START_SESSION, Some(&session_id), start_session_payload);
+    let start_session_frame = build_event_frame(
+        EVENT_START_SESSION,
+        Some(&session_id),
+        start_session_payload,
+    );
     write.send(Message::Binary(start_session_frame)).await?;
     log::debug!("Sent StartSession");
 
-    println!("==================4");
     // 等待 SessionStarted
     wait_for_event(&mut read, EVENT_SESSION_STARTED).await?;
-    println!("==================5");
     log::debug!("Received SessionStarted");
 
     // 3. 发送 TaskRequest (文本)
@@ -312,7 +313,7 @@ async fn perform_tts_websocket(
                 "speech_rate": speech_rate,
                 "enable_timestamp": true
             },
-            "text": "你好啦, 哈哈哈 额外,门卫",
+            "text": text,
             "additions": json!({
                 "disable_markdown_filter": false
             }).to_string()
@@ -357,27 +358,33 @@ async fn perform_tts_websocket(
                         break;
                     }
                     _ => {
+                        println!("xxxxxxxxxxxx ? 4");
                         println!("Received evenxxx: {} {:?}", event, data);
                     }
                 }
+                println!("xxxxxxxxxxxx ? 5");
             }
             Some(Ok(Message::Text(txt))) => {
                 log::warn!("Received unexpected text message: {}", txt);
             }
+            // Some(Ok(Message::Ping(_))) => {
+            //     log::warn!("Received  ping message");
+            //     break;
+            // }
             Some(Err(e)) => {
                 log::error!("WebSocket error: {}", e);
                 break;
             }
             None => {
-                println!("==================15");
                 log::debug!("WebSocket stream ended");
                 break;
             }
-            _ => {}
+            _ => {
+                break;
+            }
         }
     }
 
-    println!("==================x 8");
     // 5. 发送 FinishSession
     let finish_session_frame =
         build_event_frame(EVENT_FINISH_SESSION, Some(&session_id), json!({}));
@@ -391,6 +398,9 @@ async fn perform_tts_websocket(
     println!("==================x 10");
     // Save audio data to test_output.mp3 in project root
     let output_path = std::path::Path::new("test_output.mp3");
+    if fs::metadata(output_path).is_ok() {
+        fs::remove_file(output_path).wrap_err("Failed to remove existing test_output.mp3")?;
+    }
     std::fs::write(output_path, &audio_data)
         .wrap_err("Failed to write audio data to test_output.mp3")?;
     log::info!(
@@ -472,6 +482,7 @@ fn extract_audio_from_frame(data: &[u8]) -> Option<Vec<u8>> {
 
     // 如果是 audio-only 响应 (0xB4)
     if msg_type == MSG_TYPE_AUDIO_ONLY {
+        println!("==MSG_TYPE_AUDIO_ONLY");
         // Header (4 bytes) + Event (4 bytes) + Session ID length (4 bytes)
         if data.len() < 12 {
             return None;
@@ -486,6 +497,7 @@ fn extract_audio_from_frame(data: &[u8]) -> Option<Vec<u8>> {
     }
     // 如果是 full-server 响应,可能包含混合数据
     else if msg_type == MSG_TYPE_FULL_SERVER {
+        println!("==MSG_TYPE_FULL_SERVER");
         // 需要解析 JSON 然后提取音频
         // 这里简化处理,返回 None
     }
