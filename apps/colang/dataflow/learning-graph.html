@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+</head>
+
+<body>
+    <div class="mermaid">
+        flowchart TB
+  doubao-asr["**doubao-asr**"]
+  doubao-tts["**doubao-tts**"]
+  english-teacher["**english-teacher**"]
+  learning-db-writer["**learning-db-writer**"]
+  mofa-audio-player["**mofa-audio-player**"]
+  mofa-chat-display["**mofa-chat-display**"]
+  mofa-mic-input[\"**mofa-mic-input**"/]
+  mofa-system-log[/"**mofa-system-log**"\]
+  mofa-text-input[\"**mofa-text-input**"/]
+  mofa-mic-input -- audio --> doubao-asr
+  english-teacher -- json_data as text --> doubao-tts
+  doubao-asr -- text as asr_text --> english-teacher
+  mofa-text-input -- text as text_input --> english-teacher
+  english-teacher -- json_data as ai_json --> learning-db-writer
+  doubao-asr -- text as user_text --> learning-db-writer
+  mofa-mic-input -- audio as audio_myself --> mofa-audio-player
+  doubao-tts -- audio_bytes as audio_teacher --> mofa-audio-player
+  english-teacher -- json_data as ai_json --> mofa-chat-display
+  mofa-text-input -- text as text_input --> mofa-chat-display
+  doubao-asr -- text as user_text --> mofa-chat-display
+  doubao-asr -- log as asr_log --> mofa-system-log
+  doubao-asr -- status as asr_status --> mofa-system-log
+  mofa-audio-player -- log as audio_player_log --> mofa-system-log
+  mofa-audio-player -- status as audio_player_status --> mofa-system-log
+  learning-db-writer -- log as learning_db_log --> mofa-system-log
+  learning-db-writer -- status as learning_db_status --> mofa-system-log
+  english-teacher -- log as teacher_log --> mofa-system-log
+  english-teacher -- json_data as teacher_report --> mofa-system-log
+  english-teacher -- status as teacher_status --> mofa-system-log
+  doubao-tts -- log as tts_log --> mofa-system-log
+  doubao-tts -- status as tts_status --> mofa-system-log
+
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'base' });
+    </script>
+</body>
+
+</html>

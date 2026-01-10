@@ -32,11 +32,11 @@ struct TextInput {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct AudioOutput {
-    audio_data: Vec<u8>,
+struct AudioMetadata {
     duration_ms: u64,
     format: String,
     sample_rate: u32,
+    bytes: usize,
 }
 
 // WebSocket 协议相关常量
@@ -134,21 +134,31 @@ async fn main() -> Result<()> {
                         )
                         .await
                         {
-                            Ok(audio_output) => {
-                                log::info!("TTS generated {} bytes", audio_output.audio_data.len());
+                            Ok((audio_bytes, audio_metadata)) => {
+                                log::info!("TTS generated {} bytes", audio_bytes.len());
 
-                                let output_json = serde_json::to_string(&audio_output)?;
-                                let output_array = StringArray::from(vec![output_json.as_str()]);
+                                // Send audio bytes with metadata
+                                let audio_array = UInt8Array::from(audio_bytes);
+
                                 node.send_output(
-                                    "audio".to_string().into(),
+                                    "audio_bytes".to_string().into(),
                                     metadata.parameters.clone(),
-                                    output_array,
+                                    audio_array,
+                                )?;
+
+                                let metadata_json = serde_json::to_string(&audio_metadata)?;
+                                let audio_metadata =
+                                    StringArray::from(vec![metadata_json.as_str()]);
+
+                                node.send_output(
+                                    "audio_metadata".to_string().into(),
+                                    metadata.parameters.clone(),
+                                    audio_metadata,
                                 )?;
 
                                 let status = json!({
                                     "node": "doubao-tts",
                                     "status": "ok",
-                                    "bytes": audio_output.audio_data.len(),
                                 });
                                 let status_array =
                                     StringArray::from(vec![status.to_string().as_str()]);
@@ -215,7 +225,7 @@ async fn perform_tts_websocket(
     speaker: &str,
     speech_rate: i32,
     text: &str,
-) -> Result<AudioOutput> {
+) -> Result<(Vec<u8>, AudioMetadata)> {
     let url = "wss://openspeech.bytedance.com/api/v3/tts/bidirection";
 
     // 根据文档,认证参数应该在 HTTP 头中,而不是 URL 参数中
@@ -407,12 +417,15 @@ async fn perform_tts_websocket(
         "Audio saved to test_output.mp3 ({} bytes)",
         audio_data.len()
     );
-    Ok(AudioOutput {
-        audio_data,
+
+    let metadata = AudioMetadata {
         duration_ms: 0,
         format: "mp3".to_string(),
         sample_rate: 24000,
-    })
+        bytes: audio_data.len(),
+    };
+
+    Ok((audio_data, metadata))
 }
 
 fn build_event_frame(event: i32, session_id: Option<&str>, payload: serde_json::Value) -> Vec<u8> {

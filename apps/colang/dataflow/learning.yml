@@ -98,7 +98,8 @@ nodes:
     inputs:
       text: english-teacher/json_data  # 从JSON中提取reply_text字段
     outputs:
-      - audio
+      - audio_bytes
+      - audio_metadata
       - status
       - log
     env:
@@ -121,7 +122,7 @@ nodes:
         source: mofa-mic-input/audio
         queue_size: 1000
       audio_teacher:
-        source: doubao-tts/audio
+        source: doubao-tts/audio_bytes
         queue_size: 1000
     outputs:
       - buffer_status
