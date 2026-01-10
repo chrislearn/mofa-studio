@@ -35,7 +35,7 @@ ON issue_words(created_at);
 CREATE TABLE IF NOT EXISTS conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id TEXT NOT NULL, -- UUID for grouping related conversations
-    speaker TEXT NOT NULL CHECK(speaker IN ('user', 'ai')),
+    speaker TEXT NOT NULL CHECK(speaker IN ('user', 'teacher')),
     content_text TEXT NOT NULL,
     audio_path TEXT, -- Path to audio file if available
     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),

@@ -190,7 +190,7 @@ async fn main() -> Result<()> {
                                 match save_conversation(
                                     &pool,
                                     &response.session_id,
-                                    "assistant",
+                                    "teacher",
                                     &response.reply_text,
                                 )
                                 .await
