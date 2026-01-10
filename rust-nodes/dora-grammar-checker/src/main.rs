@@ -38,6 +38,13 @@ struct TextIssue {
     suggested: String,
     description: String,
     severity: String,       // low | medium | high
+
+    /// Character offsets into `user_text`.
+    /// 0-based, end_position is exclusive. Optional to keep backward compatibility.
+    #[serde(default)]
+    start_position: Option<i32>,
+    #[serde(default)]
+    end_position: Option<i32>,
 }
 
 /// 发音问题
@@ -240,36 +247,51 @@ async fn analyze_text(
     model: &str,
     text: &str,
 ) -> Result<Vec<TextIssue>> {
-    let system_prompt = r#"You are an English language expert. Analyze the user's English text and identify issues including:
-- Grammar errors
-- Word choice problems  
-- Better alternatives and suggestions
+    // This node calls Volcengine Ark "Responses API" endpoint:
+    //   POST https://ark.cn-beijing.volces.com/api/v3/responses
+    // Per docs, request body uses `input` (string or message list), NOT `messages`.
 
-Return your analysis in JSON format as an array of issues. Each issue should have:
+    let system_prompt = r#"You are a professional English teacher and writing coach.
+
+Task:
+Given a user's English text, find grammar mistakes, unnatural phrasing, and word choice improvements.
+
+Output requirements (STRICT):
+1) Return ONLY valid JSON. No Markdown, no code fences, no extra commentary.
+2) The JSON MUST be an array `issues` (not an object). If there are no issues, return `[]`.
+3) Each item MUST follow this schema (keys exactly as written):
 {
-    "type": "grammar" | "word_choice" | "suggestion",
-    "original": "the problematic text",
-    "suggested": "the corrected/better text",
-    "description": "explanation of the issue",
-    "severity": "low" | "medium" | "high"
+  "type": "grammar" | "word_choice" | "suggestion",
+  "original": string,
+  "suggested": string,
+  "description": string,
+  "severity": "low" | "medium" | "high",
+  "start_position": number | null,
+  "end_position": number | null
 }
 
-Only return the JSON array, no additional text. If no issues found, return an empty array []."#;
+Notes:
+- `start_position` and `end_position` are character offsets into the original user text.
+- Use 0-based indexing, and `end_position` is exclusive.
+- If you cannot determine an exact span, set both positions to null.
+- Keep `original` and `suggested` concise (a phrase/sentence fragment when possible).
+"#;
 
-    let messages = vec![
+    let input_items = vec![
         json!({
             "role": "system",
             "content": system_prompt
         }),
         json!({
             "role": "user",
-            "content": format!("Analyze this English text for grammar, vocabulary, and expression issues: \"{}\"", text)
-        })
+            "content": format!("User text:\n{}", text)
+        }),
     ];
 
     let payload = json!({
         "model": model,
-        "messages": messages,
+        "input": input_items,
+        "stream": false,
         "temperature": 0.3,
         "max_tokens": 1000
     });
@@ -288,28 +310,115 @@ Only return the JSON array, no additional text. If no issues found, return an em
     }
 
     let result: serde_json::Value = response.json().await?;
-    
-    let content = result["choices"][0]["message"]["content"]
-        .as_str()
-        .ok_or_else(|| eyre::eyre!("No content in response"))?;
 
-    // 尝试解析 JSON 响应
-    match serde_json::from_str::<Vec<TextIssue>>(content) {
-        Ok(issues) => Ok(issues),
-        Err(_) => {
-            // 尝试从 markdown 代码块中提取
-            let cleaned = content
-                .trim_start_matches("```json")
-                .trim_start_matches("```")
-                .trim_end_matches("```")
-                .trim();
-            
-            Ok(serde_json::from_str(cleaned).unwrap_or_else(|e| {
-                log::warn!("Failed to parse AI response: {}, content: {}", e, cleaned);
-                Vec::new()
-            }))
+    let content = extract_responses_text(&result)
+        .ok_or_else(|| eyre::eyre!("No text content in response: {}", result))?;
+
+    parse_issues_json(&content)
+}
+
+fn parse_issues_json(content: &str) -> Result<Vec<TextIssue>> {
+    // Happy path: strict JSON array.
+    if let Ok(issues) = serde_json::from_str::<Vec<TextIssue>>(content) {
+        return Ok(issues);
+    }
+
+    // Some models may still wrap in code fences or add a tiny prefix.
+    let cleaned = content
+        .trim()
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+
+    if let Ok(issues) = serde_json::from_str::<Vec<TextIssue>>(cleaned) {
+        return Ok(issues);
+    }
+
+    // Last-resort: extract the first JSON array substring.
+    if let (Some(start), Some(end)) = (cleaned.find('['), cleaned.rfind(']')) {
+        if end > start {
+            let slice = &cleaned[start..=end];
+            if let Ok(issues) = serde_json::from_str::<Vec<TextIssue>>(slice) {
+                return Ok(issues);
+            }
         }
     }
+
+    log::warn!("Failed to parse AI response as issues array. content={}", cleaned);
+    Ok(Vec::new())
+}
+
+fn extract_responses_text(result: &serde_json::Value) -> Option<String> {
+    // Some SDKs expose an aggregated `output_text`.
+    if let Some(text) = result.get("output_text").and_then(|v| v.as_str()) {
+        let trimmed = text.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+
+    // Responses API commonly returns `output` items.
+    if let Some(output) = result.get("output").and_then(|v| v.as_array()) {
+        for item in output {
+            if let Some(content) = item.get("content") {
+                if let Some(text) = extract_text_from_content_value(content) {
+                    return Some(text);
+                }
+            }
+
+            if let Some(message) = item.get("message") {
+                if let Some(content) = message.get("content") {
+                    if let Some(text) = extract_text_from_content_value(content) {
+                        return Some(text);
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback for Chat Completions style responses.
+    result
+        .get("choices")
+        .and_then(|v| v.as_array())
+        .and_then(|choices| choices.first())
+        .and_then(|first| first.get("message"))
+        .and_then(|m| m.get("content"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+}
+
+fn extract_text_from_content_value(content: &serde_json::Value) -> Option<String> {
+    // Content may be a string.
+    if let Some(text) = content.as_str() {
+        let trimmed = text.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+
+    // Or an array of content items.
+    if let Some(items) = content.as_array() {
+        for item in items {
+            if item.get("type").and_then(|v| v.as_str()) == Some("output_text") {
+                if let Some(text) = item.get("text").and_then(|v| v.as_str()) {
+                    let trimmed = text.trim();
+                    if !trimmed.is_empty() {
+                        return Some(trimmed.to_string());
+                    }
+                }
+            }
+
+            if let Some(text) = item.get("text").and_then(|v| v.as_str()) {
+                let trimmed = text.trim();
+                if !trimmed.is_empty() {
+                    return Some(trimmed.to_string());
+                }
+            }
+        }
+    }
+
+    None
 }
 
 /// 从 ArrowData 提取字节

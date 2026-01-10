@@ -24,6 +24,11 @@ struct TextIssue {
     suggested: String,
     description: String,
     severity: String,
+
+    #[serde(default)]
+    start_position: Option<i32>,
+    #[serde(default)]
+    end_position: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -251,13 +256,17 @@ async fn save_text_issue(
     sqlx::query(
         r#"
         INSERT INTO conversation_annotations (
-            conversation_id, annotation_type, original_text, suggested_text,
+            conversation_id, annotation_type,
+            start_position, end_position,
+            original_text, suggested_text,
             description, severity, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#
     )
     .bind(conversation_id)
     .bind(annotation_type)
+    .bind(issue.start_position)
+    .bind(issue.end_position)
     .bind(&issue.original)
     .bind(&issue.suggested)
     .bind(&issue.description)
