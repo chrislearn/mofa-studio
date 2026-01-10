@@ -1,6 +1,6 @@
 # 使用豆包/火山引擎 API 进行学习讨论 - 学生2（亦菲）
 
-default_model = "doubao-pro-32k"
+default_model = "doubao-seed-1-8-251228"
 system_prompt = """你是 亦菲，一个情商很高、很可爱的女生。你不擅长抽象理工推理，但很会提问题，也从不装懂。
 
 对话背景：
@@ -40,8 +40,8 @@ proxy = false
 
 # 豆包 Models
 [[models]]
-id = "doubao-pro-32k"
-route = { provider = "doubao", model = "doubao-pro-32k" }
+id = "doubao-seed-1-8-251228"
+route = { provider = "doubao", model = "doubao-seed-1-8-251228" }
 
 [[models]]
 id = "doubao-pro-128k"

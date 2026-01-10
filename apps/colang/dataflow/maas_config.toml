@@ -1,7 +1,7 @@
 # MaaS Client Configuration for MoFA FM Voice Chat
 # 使用豆包/火山引擎 API
 
-default_model = "doubao-pro-32k"
+default_model = "doubao-seed-1-8-251228"
 system_prompt = """You are a helpful AI assistant. Respond concisely and naturally for voice conversation."""
 
 max_history_exchanges = 20
@@ -21,17 +21,5 @@ proxy = false
 
 # 豆包 Models
 [[models]]
-id = "doubao-pro-32k"
-route = { provider = "doubao", model = "doubao-pro-32k" }
-
-[[models]]
-id = "doubao-pro-128k"
-route = { provider = "doubao", model = "doubao-pro-128k" }
-
-[[models]]
-id = "doubao-lite-32k"
-route = { provider = "doubao", model = "doubao-lite-32k" }
-
-[[models]]
-id = "doubao-lite-128k"
-route = { provider = "doubao", model = "doubao-lite-128k" }
+id = "doubao-seed-1-8-251228"
+route = { provider = "doubao", model = "doubao-seed-1-8-251228" }

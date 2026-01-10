@@ -66,7 +66,7 @@ nodes:
       - log
     env:
       DOUBAO_API_KEY: ${DOUBAO_API_KEY:-}
-      DOUBAO_MODEL: doubao-pro-32k
+      DOUBAO_MODEL: doubao-seed-1-8-251228
       LOG_LEVEL: INFO
       RUST_LOG: info
 
@@ -119,7 +119,7 @@ nodes:
       - log
     env:
       DOUBAO_API_KEY: ${DOUBAO_API_KEY:-}
-      DOUBAO_MODEL: doubao-pro-32k
+      DOUBAO_MODEL: doubao-seed-1-8-251228
       LOG_LEVEL: INFO
       RUST_LOG: info
       # AI 系统提示: 专业英语教师

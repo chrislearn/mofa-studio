@@ -2,8 +2,8 @@
 
 [model]
 provider = "doubao"
-model_name = "doubao-pro-32k"
-api_endpoint = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+model_name = "doubao-seed-1-8-251228"
+api_endpoint = "https://ark.cn-beijing.volces.com/api/v3/responses"
 
 [model.parameters]
 temperature = 0.7

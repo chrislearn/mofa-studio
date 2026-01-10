@@ -96,8 +96,6 @@ async fn main() -> Result<()> {
     
     let model = std::env::var("DOUBAO_MODEL")
         .unwrap_or_else(|_| "doubao-seed-1-8-251228".to_string());
-    println!("=========model1??: {}", model);
-    let model = "doubao-seed-1-8-251228".to_string(); // 强制使用该模型，test
     
     let system_prompt = std::env::var("SYSTEM_PROMPT")
         .unwrap_or_else(|_| DEFAULT_SYSTEM_PROMPT.to_string());
