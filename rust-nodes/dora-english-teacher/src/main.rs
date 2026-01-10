@@ -92,7 +92,7 @@ async fn main() -> Result<()> {
     
     let api_key = std::env::var("DOUBAO_API_KEY")
         .wrap_err("DOUBAO_API_KEY environment variable not set")?;
-    println!("=========api_key1: {}", api_key);
+    log::info!("DOUBAO_API_KEY loaded");
     
     let model = std::env::var("DOUBAO_MODEL")
         .unwrap_or_else(|_| "doubao-seed-1-8-251228".to_string());
@@ -277,28 +277,28 @@ async fn generate_response(
     system_prompt: &str,
     history: &ConversationHistory,
 ) -> Result<String> {
-    let mut messages = vec![
-        json!({
-            "role": "system",
-            "content": system_prompt
-        })
-    ];
-    
+    // NOTE: This node calls Volcengine Ark "Responses API" endpoint:
+    //   POST https://ark.cn-beijing.volces.com/api/v3/responses
+    // Per docs, request body uses `input` (string or message list), NOT `messages`.
+    // See: https://www.volcengine.com/docs/82379/1399008?lang=zh
+
+    let mut input_items = vec![json!({
+        "role": "system",
+        "content": system_prompt,
+    })];
+
     // 添加对话历史
     for msg in history.get_messages() {
-        messages.push(json!({
+        input_items.push(json!({
             "role": msg.role,
-            "content": msg.content
+            "content": msg.content,
         }));
     }
 
     let payload = json!({
         "model": model,
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 500,
-        "presence_penalty": 0.1,
-        "frequency_penalty": 0.1
+        "input": input_items,
+        "stream": false
     });
 
     let response = client
@@ -315,12 +315,81 @@ async fn generate_response(
     }
 
     let result: serde_json::Value = response.json().await?;
-    
-    let content = result["choices"][0]["message"]["content"]
-        .as_str()
-        .ok_or_else(|| eyre::eyre!("No content in response"))?;
 
-    Ok(content.to_string())
+    extract_responses_text(&result)
+        .ok_or_else(|| eyre::eyre!("No text content in response: {}", result))
+}
+
+fn extract_responses_text(result: &serde_json::Value) -> Option<String> {
+    // Some SDKs expose an aggregated `output_text`.
+    if let Some(text) = result.get("output_text").and_then(|v| v.as_str()) {
+        let trimmed = text.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+
+    // Responses API commonly returns `output` items. Try to locate the first output text.
+    if let Some(output) = result.get("output").and_then(|v| v.as_array()) {
+        for item in output {
+            // Common shape: { type: "message", role: "assistant", content: [{type:"output_text", text:"..."}] }
+            if let Some(text) = extract_text_from_content_value(item.get("content")?) {
+                return Some(text);
+            }
+
+            // Alternate shape: { message: { content: ... } }
+            if let Some(message) = item.get("message") {
+                if let Some(text) = extract_text_from_content_value(message.get("content")?) {
+                    return Some(text);
+                }
+            }
+        }
+    }
+
+    // Fallback for Chat Completions style responses, in case backend returns that shape.
+    result
+        .get("choices")
+        .and_then(|v| v.as_array())
+        .and_then(|choices| choices.first())
+        .and_then(|first| first.get("message"))
+        .and_then(|m| m.get("content"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+}
+
+fn extract_text_from_content_value(content: &serde_json::Value) -> Option<String> {
+    // Content may be a string.
+    if let Some(text) = content.as_str() {
+        let trimmed = text.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+
+    // Or an array of content items.
+    if let Some(items) = content.as_array() {
+        for item in items {
+            // Prefer explicit output_text.
+            if item.get("type").and_then(|v| v.as_str()) == Some("output_text") {
+                if let Some(text) = item.get("text").and_then(|v| v.as_str()) {
+                    let trimmed = text.trim();
+                    if !trimmed.is_empty() {
+                        return Some(trimmed.to_string());
+                    }
+                }
+            }
+
+            // Some variants may just carry {text:"..."}.
+            if let Some(text) = item.get("text").and_then(|v| v.as_str()) {
+                let trimmed = text.trim();
+                if !trimmed.is_empty() {
+                    return Some(trimmed.to_string());
+                }
+            }
+        }
+    }
+
+    None
 }
 
 /// 从 ArrowData 提取字节
