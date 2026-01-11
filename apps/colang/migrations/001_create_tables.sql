@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS issue_words (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     word TEXT NOT NULL,
     issue_type TEXT NOT NULL CHECK(issue_type IN ('pronunciation', 'usage', 'unfamiliar', 'grammar')),
-    issue_description TEXT,
+    description_en TEXT,
+    description_zh TEXT,
     -- Spaced repetition fields
     last_picked_at INTEGER, -- Unix timestamp (seconds)
     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
@@ -66,7 +67,8 @@ CREATE TABLE IF NOT EXISTS conversation_annotations (
     end_position INTEGER,   -- Character position where annotation ends
     original_text TEXT,
     suggested_text TEXT,
-    description TEXT,
+    description_en TEXT,
+    description_zh TEXT,
     severity TEXT CHECK(severity IN ('low', 'medium', 'high')) DEFAULT 'medium',
     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     

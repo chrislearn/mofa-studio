@@ -2,7 +2,7 @@
 -- Run this to populate database with common problematic words for English learners
 
 -- Common pronunciation challenges
-INSERT OR IGNORE INTO issue_words (word, issue_type, issue_description_en, created_at, pick_count, review_interval_days, difficulty_level, context)
+INSERT OR IGNORE INTO issue_words (word, issue_type, description_en, created_at, pick_count, review_interval_days, difficulty_level, context)
 VALUES 
     ('through', 'pronunciation', 'Often mispronounced as "throw" or "true"', strftime('%s', 'now'), 0, 1, 3, 'I walked through the park.'),
     ('comfortable', 'pronunciation', 'Many syllables, often shortened incorrectly', strftime('%s', 'now'), 0, 1, 3, 'This chair is very comfortable.'),
@@ -14,7 +14,7 @@ VALUES
     ('particularly', 'pronunciation', 'Long word with specific stress pattern', strftime('%s', 'now'), 0, 1, 3, 'I particularly enjoy reading.');
 
 -- Common grammar/usage issues
-INSERT OR IGNORE INTO issue_words (word, issue_type, issue_description_en, created_at, pick_count, review_interval_days, difficulty_level, context)
+INSERT OR IGNORE INTO issue_words (word, issue_type, description_en, created_at, pick_count, review_interval_days, difficulty_level, context)
 VALUES
     ('affect', 'usage', 'Often confused with "effect"', strftime('%s', 'now'), 0, 1, 3, 'This will affect our plans.'),
     ('effect', 'usage', 'Often confused with "affect"', strftime('%s', 'now'), 0, 1, 3, 'The effect was immediate.'),
@@ -26,7 +26,7 @@ VALUES
     ('lose', 'usage', 'Often misspelled as "loose"', strftime('%s', 'now'), 0, 1, 2, 'Don''t lose your keys.');
 
 -- Advanced vocabulary for workplace
-INSERT OR IGNORE INTO issue_words (word, issue_type, issue_description_en, created_at, pick_count, review_interval_days, difficulty_level, context)
+INSERT OR IGNORE INTO issue_words (word, issue_type, description_en, created_at, pick_count, review_interval_days, difficulty_level, context)
 VALUES
     ('accomplish', 'unfamiliar', 'Useful for discussing achievements', strftime('%s', 'now'), 0, 1, 2, 'I want to accomplish this goal.'),
     ('determine', 'unfamiliar', 'Important for decision-making contexts', strftime('%s', 'now'), 0, 1, 2, 'We need to determine the best approach.'),
@@ -38,7 +38,7 @@ VALUES
     ('implement', 'unfamiliar', 'Putting plans into action', strftime('%s', 'now'), 0, 1, 2, 'We will implement the new policy.');
 
 -- Common conversational words
-INSERT OR IGNORE INTO issue_words (word, issue_type, issue_description_en, created_at, pick_count, review_interval_days, difficulty_level, context)
+INSERT OR IGNORE INTO issue_words (word, issue_type, description_en, created_at, pick_count, review_interval_days, difficulty_level, context)
 VALUES
     ('although', 'unfamiliar', 'Expressing contrast', strftime('%s', 'now'), 0, 1, 2, 'Although it rained, we went out.'),
     ('however', 'unfamiliar', 'Contrasting ideas', strftime('%s', 'now'), 0, 1, 2, 'I wanted to go; however, I was busy.'),
@@ -50,7 +50,7 @@ VALUES
     ('significant', 'unfamiliar', 'Important or meaningful', strftime('%s', 'now'), 0, 1, 2, 'This is a significant achievement.');
 
 -- Grammar-specific challenges
-INSERT OR IGNORE INTO issue_words (word, issue_type, issue_description_en, created_at, pick_count, review_interval_days, difficulty_level, context)
+INSERT OR IGNORE INTO issue_words (word, issue_type, description_en, created_at, pick_count, review_interval_days, difficulty_level, context)
 VALUES
     ('have been', 'grammar', 'Present perfect continuous tense', strftime('%s', 'now'), 0, 1, 3, 'I have been working here for two years.'),
     ('would have', 'grammar', 'Past conditional', strftime('%s', 'now'), 0, 1, 4, 'I would have called if I had known.'),

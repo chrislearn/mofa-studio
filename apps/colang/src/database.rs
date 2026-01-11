@@ -9,8 +9,8 @@ pub struct IssueWord {
     pub id: Option<i64>,
     pub word: String,
     pub issue_type: IssueType,
-    pub issue_description_en: Option<String>,
-    pub issue_description_zh: Option<String>,
+    pub description_en: Option<String>,
+    pub description_zh: Option<String>,
     pub last_picked_at: Option<i64>,
     pub created_at: i64,
     pub pick_count: i64,
@@ -239,20 +239,20 @@ impl Database {
         let result = sqlx::query(
             r#"
             INSERT INTO issue_words (
-                word, issue_type, issue_description_en, issue_description_zh, created_at, pick_count,
+                word, issue_type, description_en, description_zh, created_at, pick_count,
                 review_interval_days, difficulty_level, context, audio_timestamp
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(word, issue_type) DO UPDATE SET
-                issue_description_en = excluded.issue_description_en,
-                issue_description_zh = excluded.issue_description_zh,
+                description_en = excluded.description_en,
+                description_zh = excluded.description_zh,
                 context = excluded.context,
                 audio_timestamp = excluded.audio_timestamp
             "#
         )
         .bind(&word.word)
         .bind(word.issue_type.to_string())
-        .bind(&word.issue_description_en)
-        .bind(&word.issue_description_zh)
+        .bind(&word.description_en)
+        .bind(&word.description_zh)
         .bind(word.created_at)
         .bind(word.pick_count)
         .bind(word.review_interval_days)
@@ -270,7 +270,7 @@ impl Database {
         let rows = sqlx::query(
             r#"
             SELECT 
-                w.id, w.word, w.issue_type, w.issue_description_en, w.issue_description_zh, w.last_picked_at,
+                w.id, w.word, w.issue_type, w.description_en, w.description_zh, w.last_picked_at,
                 w.created_at, w.pick_count, w.next_review_at, w.review_interval_days,
                 w.difficulty_level, w.context, w.audio_timestamp,
                 COALESCE(
@@ -303,8 +303,8 @@ impl Database {
                 id: row.get("id"),
                 word: row.get("word"),
                 issue_type: row.get::<String, _>("issue_type").parse().unwrap(),
-                issue_description_en: row.get("issue_description_en"),
-                issue_description_zh: row.get("issue_description_zh"),
+                description_en: row.get("description_en"),
+                description_zh: row.get("description_zh"),
                 last_picked_at: row.get("last_picked_at"),
                 created_at: row.get("created_at"),
                 pick_count: row.get("pick_count"),
