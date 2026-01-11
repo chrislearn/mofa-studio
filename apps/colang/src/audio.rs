@@ -2,6 +2,7 @@
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Device, Host, Stream, StreamConfig};
+use crossbeam_channel::{Sender, Receiver, unbounded};
 use parking_lot::Mutex;
 use std::sync::Arc;
 
@@ -24,6 +25,13 @@ impl Default for MicLevelState {
     }
 }
 
+/// Audio chunk for sending to dora
+#[derive(Clone, Debug)]
+pub struct AudioChunk {
+    pub samples: Vec<f32>,
+    pub sample_rate: u32,
+}
+
 /// Audio manager for device enumeration and mic monitoring
 pub struct AudioManager {
     host: Host,
@@ -31,17 +39,23 @@ pub struct AudioManager {
     mic_level: Arc<Mutex<MicLevelState>>,
     current_input_device: Option<String>,
     current_output_device: Option<String>,
+    /// Channel for sending captured audio chunks
+    audio_tx: Option<Sender<AudioChunk>>,
+    audio_rx: Option<Receiver<AudioChunk>>,
 }
 
 impl AudioManager {
     pub fn new() -> Self {
         let host = cpal::default_host();
+        let (audio_tx, audio_rx) = unbounded();
         Self {
             host,
             input_stream: None,
             mic_level: Arc::new(Mutex::new(MicLevelState::default())),
             current_input_device: None,
             current_output_device: None,
+            audio_tx: Some(audio_tx),
+            audio_rx: Some(audio_rx),
         }
     }
 
@@ -124,16 +138,25 @@ impl AudioManager {
             .map_err(|e| format!("Failed to get config: {}", e))?;
 
         let sample_format = config.sample_format();
-        let config: StreamConfig = config.into();
+        let stream_config: StreamConfig = config.clone().into();
+        let actual_sample_rate = stream_config.sample_rate.0;
 
         let mic_level = self.mic_level.clone();
+        let audio_tx = self.audio_tx.clone();
+
+        // Buffer for accumulating samples before sending (send every 100ms)
+        let chunk_size = (actual_sample_rate as f32 * 0.1) as usize; // 100ms chunks
 
         // Build stream based on sample format
         let stream = match sample_format {
             cpal::SampleFormat::F32 => {
+                let buffer = Arc::new(Mutex::new(Vec::with_capacity(chunk_size)));
+                let buffer_clone = buffer.clone();
+                
                 device.build_input_stream(
-                    &config,
+                    &stream_config,
                     move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                        // Update mic level for visualization
                         let mut max = 0.0f32;
                         for &sample in data {
                             let abs = sample.abs();
@@ -142,12 +165,28 @@ impl AudioManager {
                             }
                         }
                         let mut state = mic_level.lock();
-                        // Smooth the level with exponential decay
                         state.level = state.level * 0.7 + max * 0.3;
                         if max > state.peak {
                             state.peak = max;
                         } else {
-                            state.peak *= 0.995; // Slow decay for peak
+                            state.peak *= 0.995;
+                        }
+                        drop(state);
+
+                        // Accumulate audio samples
+                        if let Some(ref tx) = audio_tx {
+                            let mut buf = buffer_clone.lock();
+                            buf.extend_from_slice(data);
+                            
+                            // Send chunk when buffer is full
+                            if buf.len() >= chunk_size {
+                                let chunk = AudioChunk {
+                                    samples: buf.clone(),
+                                    sample_rate: actual_sample_rate,
+                                };
+                                let _ = tx.try_send(chunk);
+                                buf.clear();
+                            }
                         }
                     },
                     |err| eprintln!("Audio input error: {}", err),
@@ -155,9 +194,13 @@ impl AudioManager {
                 )
             }
             cpal::SampleFormat::I16 => {
+                let buffer = Arc::new(Mutex::new(Vec::with_capacity(chunk_size)));
+                let buffer_clone = buffer.clone();
+                
                 device.build_input_stream(
-                    &config,
+                    &stream_config,
                     move |data: &[i16], _: &cpal::InputCallbackInfo| {
+                        // Update mic level
                         let mut max = 0.0f32;
                         for &sample in data {
                             let abs = (sample as f32 / i16::MAX as f32).abs();
@@ -171,6 +214,25 @@ impl AudioManager {
                             state.peak = max;
                         } else {
                             state.peak *= 0.995;
+                        }
+                        drop(state);
+
+                        // Convert i16 to f32 and accumulate
+                        if let Some(ref tx) = audio_tx {
+                            let mut buf = buffer_clone.lock();
+                            for &sample in data {
+                                buf.push(sample as f32 / 32768.0);
+                            }
+                            
+                            // Send chunk when buffer is full
+                            if buf.len() >= chunk_size {
+                                let chunk = AudioChunk {
+                                    samples: buf.clone(),
+                                    sample_rate: actual_sample_rate,
+                                };
+                                let _ = tx.try_send(chunk);
+                                buf.clear();
+                            }
                         }
                     },
                     |err| eprintln!("Audio input error: {}", err),
@@ -218,6 +280,18 @@ impl AudioManager {
     /// Get current output device name
     pub fn current_output_device(&self) -> Option<&str> {
         self.current_output_device.as_deref()
+    }
+
+    /// Poll for captured audio chunks (non-blocking)
+    /// Returns all available audio chunks
+    pub fn poll_audio_chunks(&self) -> Vec<AudioChunk> {
+        let mut chunks = Vec::new();
+        if let Some(ref rx) = self.audio_rx {
+            while let Ok(chunk) = rx.try_recv() {
+                chunks.push(chunk);
+            }
+        }
+        chunks
     }
 }
 

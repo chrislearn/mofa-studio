@@ -1170,6 +1170,20 @@ impl Widget for ColangScreen {
                     dora.send_command(DoraCommand::UpdateBufferStatus { fill_percentage });
                 }
             }
+            
+            // Poll for captured audio chunks and send to dora
+            if let Some(ref audio_manager) = self.audio_manager {
+                let chunks = audio_manager.poll_audio_chunks();
+                if !chunks.is_empty() {
+                    if let Some(ref dora) = self.dora_integration {
+                        for chunk in chunks {
+                            ::log::debug!("Sending mic audio chunk: {} samples at {}Hz", 
+                                chunk.samples.len(), chunk.sample_rate);
+                            dora.send_audio(chunk.samples, chunk.sample_rate);
+                        }
+                    }
+                }
+            }
         }
 
         // Handle dora timer for polling dora events
