@@ -48,7 +48,8 @@ struct TextIssue {
     issue_type: String,
     original: String,
     suggested: String,
-    description: String,
+    description_en: String,
+    description_zh: String,
     severity: String,
 
     #[serde(default)]
@@ -360,8 +361,8 @@ async fn save_text_issue(
             conversation_id, annotation_type,
             start_position, end_position,
             original_text, suggested_text,
-            description, severity, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            description_en, description_zh, severity, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
     )
     .bind(conversation_id)
@@ -370,7 +371,8 @@ async fn save_text_issue(
     .bind(issue.end_position)
     .bind(&issue.original)
     .bind(&issue.suggested)
-    .bind(&issue.description)
+    .bind(&issue.description_en)
+    .bind(&issue.description_zh)
     .bind(&issue.severity)
     .bind(now)
     .execute(pool)
@@ -397,18 +399,20 @@ async fn save_text_issue(
         sqlx::query(
             r#"
             INSERT INTO issue_words (
-                word, issue_type, issue_description, created_at, pick_count,
+                word, issue_type, issue_description_en, issue_description_zh, created_at, pick_count,
                 review_interval_days, difficulty_level, context
-            ) VALUES (?, ?, ?, ?, 0, 1, 3, ?)
+            ) VALUES (?, ?, ?, ?, ?, 0, 1, 3, ?)
             ON CONFLICT(word, issue_type) DO UPDATE SET
-                issue_description = excluded.issue_description,
+                issue_description_en = excluded.issue_description_en,
+                issue_description_zh = excluded.issue_description_zh,
                 context = excluded.context,
                 difficulty_level = MAX(difficulty_level, 3)
             "#,
         )
         .bind(&clean_word)
         .bind(issue_type_db)
-        .bind(&issue.description)
+        .bind(&issue.description_en)
+        .bind(&issue.description_zh)
         .bind(now)
         .bind(context)
         .execute(pool)
@@ -443,16 +447,17 @@ async fn save_pronunciation_issue(
     sqlx::query(
         r#"
         INSERT INTO issue_words (
-            word, issue_type, issue_description, created_at, pick_count,
+            word, issue_type, issue_description_en, issue_description_zh, created_at, pick_count,
             review_interval_days, difficulty_level, context
-        ) VALUES (?, 'pronunciation', ?, ?, 0, 1, 2, ?)
+        ) VALUES (?, 'pronunciation', ?, ?, ?, 0, 1, 2, ?)
         ON CONFLICT(word, issue_type) DO UPDATE SET
             difficulty_level = MIN(difficulty_level + 1, 5),
-            issue_description = excluded.issue_description
+            issue_description_en = excluded.issue_description_en
         "#,
     )
     .bind(&clean_word)
     .bind(&description)
+    .bind(None::<String>) // issue_description_zh placeholder
     .bind(now)
     .bind(context)
     .execute(pool)

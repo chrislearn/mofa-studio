@@ -9,7 +9,8 @@ pub struct IssueWord {
     pub id: Option<i64>,
     pub word: String,
     pub issue_type: IssueType,
-    pub issue_description: Option<String>,
+    pub issue_description_en: Option<String>,
+    pub issue_description_zh: Option<String>,
     pub last_picked_at: Option<i64>,
     pub created_at: i64,
     pub pick_count: i64,
@@ -105,7 +106,8 @@ pub struct ConversationAnnotation {
     pub end_position: Option<i64>,
     pub original_text: Option<String>,
     pub suggested_text: Option<String>,
-    pub description: Option<String>,
+    pub description_en: Option<String>,
+    pub description_zh: Option<String>,
     pub severity: Severity,
     pub created_at: i64,
 }
@@ -237,18 +239,20 @@ impl Database {
         let result = sqlx::query(
             r#"
             INSERT INTO issue_words (
-                word, issue_type, issue_description, created_at, pick_count,
+                word, issue_type, issue_description_en, issue_description_zh, created_at, pick_count,
                 review_interval_days, difficulty_level, context, audio_timestamp
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(word, issue_type) DO UPDATE SET
-                issue_description = excluded.issue_description,
+                issue_description_en = excluded.issue_description_en,
+                issue_description_zh = excluded.issue_description_zh,
                 context = excluded.context,
                 audio_timestamp = excluded.audio_timestamp
             "#
         )
         .bind(&word.word)
         .bind(word.issue_type.to_string())
-        .bind(&word.issue_description)
+        .bind(&word.issue_description_en)
+        .bind(&word.issue_description_zh)
         .bind(word.created_at)
         .bind(word.pick_count)
         .bind(word.review_interval_days)
@@ -266,7 +270,7 @@ impl Database {
         let rows = sqlx::query(
             r#"
             SELECT 
-                w.id, w.word, w.issue_type, w.issue_description, w.last_picked_at,
+                w.id, w.word, w.issue_type, w.issue_description_en, w.issue_description_zh, w.last_picked_at,
                 w.created_at, w.pick_count, w.next_review_at, w.review_interval_days,
                 w.difficulty_level, w.context, w.audio_timestamp,
                 COALESCE(
@@ -299,7 +303,8 @@ impl Database {
                 id: row.get("id"),
                 word: row.get("word"),
                 issue_type: row.get::<String, _>("issue_type").parse().unwrap(),
-                issue_description: row.get("issue_description"),
+                issue_description_en: row.get("issue_description_en"),
+                issue_description_zh: row.get("issue_description_zh"),
                 last_picked_at: row.get("last_picked_at"),
                 created_at: row.get("created_at"),
                 pick_count: row.get("pick_count"),
@@ -454,8 +459,8 @@ impl Database {
             r#"
             INSERT INTO conversation_annotations (
                 conversation_id, annotation_type, start_position, end_position,
-                original_text, suggested_text, description, severity, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                original_text, suggested_text, description_en, description_zh, severity, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#
         )
         .bind(annotation.conversation_id)
@@ -464,7 +469,8 @@ impl Database {
         .bind(annotation.end_position)
         .bind(&annotation.original_text)
         .bind(&annotation.suggested_text)
-        .bind(&annotation.description)
+        .bind(&annotation.description_en)
+        .bind(&annotation.description_zh)
         .bind(annotation.severity.to_string())
         .bind(annotation.created_at)
         .execute(&self.pool)
@@ -495,7 +501,8 @@ impl Database {
                 end_position: row.get("end_position"),
                 original_text: row.get("original_text"),
                 suggested_text: row.get("suggested_text"),
-                description: row.get("description"),
+                description_en: row.get("description_en"),
+                description_zh: row.get("description_zh"),
                 severity: row.get::<String, _>("severity").parse().unwrap(),
                 created_at: row.get("created_at"),
             });

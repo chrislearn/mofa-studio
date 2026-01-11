@@ -14,7 +14,8 @@ struct IssueWord {
     id: i64,
     word: String,
     issue_type: String,
-    issue_description: Option<String>,
+    issue_description_en: Option<String>,
+    issue_description_zh: Option<String>,
     difficulty_level: i64,
     context: Option<String>,
 }
@@ -187,7 +188,7 @@ async fn select_words(pool: &SqlitePool, limit: usize) -> Result<Vec<IssueWord>>
     let rows = sqlx::query(
         r#"
         SELECT 
-            w.id, w.word, w.issue_type, w.issue_description,
+            w.id, w.word, w.issue_type, w.issue_description_en, w.issue_description_zh,
             w.difficulty_level, w.context,
             COALESCE(
                 (SELECT COUNT(*) FROM word_practice_log 
@@ -219,7 +220,8 @@ async fn select_words(pool: &SqlitePool, limit: usize) -> Result<Vec<IssueWord>>
             id: row.get("id"),
             word: row.get("word"),
             issue_type: row.get("issue_type"),
-            issue_description: row.get("issue_description"),
+            issue_description_en: row.get("issue_description_en"),
+            issue_description_zh: row.get("issue_description_zh"),
             difficulty_level: row.get("difficulty_level"),
             context: row.get("context"),
         });

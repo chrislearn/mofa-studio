@@ -100,7 +100,8 @@ struct TextIssue {
     issue_type: String, // grammar | word_choice | suggestion
     original: String,
     suggested: String,
-    description: String,
+    description_en: String,
+    description_zh: String,
     severity: String, // low | medium | high
 
     #[serde(default)]
@@ -375,9 +376,13 @@ async fn generate_comprehensive_response(
                             "type": "string",
                             "description": "The corrected or better alternative"
                         },
-                        "description": {
+                        "description_en": {
                             "type": "string",
-                            "description": "Explanation of the issue"
+                            "description": "Explanation of the issue using simple English"
+                        },
+                        "description_zh": {
+                            "type": "string",
+                            "description": "Explanation of the issue using simple Chinese"
                         },
                         "severity": {
                             "type": "string",
@@ -393,7 +398,7 @@ async fn generate_comprehensive_response(
                             "description": "0-based character offset where issue ends, exclusive (null if unknown)"
                         }
                     },
-                    "required": ["type", "original", "suggested", "description", "severity"],
+                    "required": ["type", "original", "suggested", "description_en", "description_zh", "severity"],
                     "additionalProperties": false
                 }
             }
