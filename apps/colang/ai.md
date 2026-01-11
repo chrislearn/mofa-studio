@@ -66,3 +66,6 @@ create_at 创建时间戳, 后面根据这个时间戳, 决定合适抽取给用
 
 给出 10 种不同的设计方案, 分别命名为 方案1...方案10. 放入 design 文件夹.
 立刻开始你的工作, 不需要我确认任何内容.
+
+
+- bridge mic input to dora looks not work
