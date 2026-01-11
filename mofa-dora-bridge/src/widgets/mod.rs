@@ -9,11 +9,13 @@
 //! (more accurate since it reflects what's actually being played)
 
 mod audio_player;
+mod mic_input;
 mod prompt_input;
 mod system_log;
 mod text_input;
 
 pub use audio_player::AudioPlayerBridge;
+pub use mic_input::MicInputBridge;
 pub use prompt_input::PromptInputBridge;
 pub use system_log::SystemLogBridge;
 pub use text_input::TextInputBridge;

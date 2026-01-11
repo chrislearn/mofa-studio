@@ -8,7 +8,7 @@ use crate::bridge::{BridgeEvent, BridgeState, DoraBridge};
 use crate::controller::DataflowController;
 use crate::error::{BridgeError, BridgeResult};
 use crate::parser::MofaNodeSpec;
-use crate::widgets::{AudioPlayerBridge, TextInputBridge, PromptInputBridge, SystemLogBridge};
+use crate::widgets::{AudioPlayerBridge, MicInputBridge, TextInputBridge, PromptInputBridge, SystemLogBridge};
 use crate::MofaNodeType;
 use crossbeam_channel::Receiver;
 use parking_lot::RwLock;
@@ -77,10 +77,7 @@ impl DynamicNodeDispatcher {
                 MofaNodeType::SystemLog => Box::new(SystemLogBridge::new(&node_spec.id)),
                 MofaNodeType::TextInput => Box::new(TextInputBridge::new(&node_spec.id)),
                 MofaNodeType::PromptInput => Box::new(PromptInputBridge::new(&node_spec.id)),
-                MofaNodeType::MicInput => {
-                    // TODO: Implement MicInputBridge
-                    continue;
-                }
+                MofaNodeType::MicInput => Box::new(MicInputBridge::new(&node_spec.id)),
                 MofaNodeType::ChatViewer => {
                     // TODO: Implement ChatViewerBridge
                     continue;
