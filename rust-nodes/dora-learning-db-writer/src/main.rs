@@ -17,10 +17,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[derive(Debug, Serialize, Deserialize)]
 struct ComprehensiveResponse {
     session_id: String,
-    user_text: String,
-    reply_text: String,
-    issues: Vec<TextIssue>,
-    pronunciation_issues: Vec<PronunciationIssue>,
+    use_lang: String,       // 用户文本语言: "en" | "zh" | "mix"
+    original_en: String,    // 用户原始文本（英文）
+    original_zh: String,    // 用户原始文本（中文）
+    reply_en: String,       // AI对该消息的英文回复
+    reply_zh: String,       // AI对该消息的中文回复
+    issues: Vec<TextIssue>, // 语法/用词问题
     timestamp: i64,
 }
 
@@ -59,17 +61,9 @@ struct TextIssue {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct PronunciationIssue {
-    word: String,
-    confidence: f32,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 struct StorageResult {
     success: bool,
-    conversations_stored: usize,
     issues_stored: usize,
-    pronunciation_issues_stored: usize,
     error: Option<String>,
 }
 
@@ -128,20 +122,18 @@ async fn main() -> Result<()> {
 
                         let mut result = StorageResult {
                             success: true,
-                            conversations_stored: 0,
                             issues_stored: 0,
-                            pronunciation_issues_stored: 0,
                             error: None,
                         };
 
-                        match save_conversation(&pool, &session_id, "user", &user_text).await {
-                            Ok(_) => result.conversations_stored += 1,
-                            Err(e) => {
-                                log::error!("Failed to save user message: {}", e);
-                                result.success = false;
-                                result.error = Some(e.to_string());
-                            }
-                        }
+                        // match save_comprehensive(&pool, &session_id, "user", &user_text).await {
+                        //     Ok(_) => result.conversations_stored += 1,
+                        //     Err(e) => {
+                        //         log::error!("Failed to save user message: {}", e);
+                        //         result.success = false;
+                        //         result.error = Some(e.to_string());
+                        //     }
+                        // }
 
                         send_result(&mut node, &metadata, &result)?;
                     }
@@ -157,46 +149,23 @@ async fn main() -> Result<()> {
                         match serde_json::from_slice::<ComprehensiveResponse>(&raw_data) {
                             Ok(response) => {
                                 log::info!(
-                                    "Storing comprehensive response: user='{}', ai='{}', {} issues, {} pronunciation issues",
-                                    response.user_text, response.reply_text,
-                                    response.issues.len(), response.pronunciation_issues.len()
+                                    "Storing comprehensive response: user='{}', ai='{}', {} issues",
+                                    response.original_en,
+                                    response.reply_en,
+                                    response.issues.len()
                                 );
 
                                 let mut result = StorageResult {
                                     success: true,
-                                    conversations_stored: 0,
                                     issues_stored: 0,
-                                    pronunciation_issues_stored: 0,
                                     error: None,
                                 };
 
-                                // 1. 存储用户消息到 conversations
-                                match save_conversation(
-                                    &pool,
-                                    &response.session_id,
-                                    "user",
-                                    &response.user_text,
-                                )
-                                .await
-                                {
-                                    Ok(_) => result.conversations_stored += 1,
-                                    Err(e) => {
-                                        log::error!("Failed to save user conversation: {}", e);
-                                        result.success = false;
-                                        result.error = Some(e.to_string());
-                                    }
-                                }
-
                                 // 2. 存储 AI 回复到 conversations
-                                match save_conversation(
-                                    &pool,
-                                    &response.session_id,
-                                    "teacher",
-                                    &response.reply_text,
-                                )
-                                .await
+                                match save_comprehensive(&pool, &response.session_id, &response)
+                                    .await
                                 {
-                                    Ok(_) => result.conversations_stored += 1,
+                                    Ok(_) => {}
                                     Err(e) => {
                                         log::error!("Failed to save AI conversation: {}", e);
                                         result.success = false;
@@ -225,7 +194,7 @@ async fn main() -> Result<()> {
                                         &pool,
                                         conv_id,
                                         issue,
-                                        &response.user_text,
+                                        &response.original_en,
                                     )
                                     .await
                                     {
@@ -236,34 +205,7 @@ async fn main() -> Result<()> {
                                         }
                                     }
                                 }
-
-                                // 5. 存储发音问题
-                                for p_issue in &response.pronunciation_issues {
-                                    match save_pronunciation_issue(
-                                        &pool,
-                                        &p_issue.word,
-                                        p_issue.confidence,
-                                        &response.user_text,
-                                    )
-                                    .await
-                                    {
-                                        Ok(_) => result.pronunciation_issues_stored += 1,
-                                        Err(e) => {
-                                            log::error!(
-                                                "Failed to save pronunciation issue: {}",
-                                                e
-                                            );
-                                            result.success = false;
-                                        }
-                                    }
-                                }
-
-                                log::info!(
-                                    "Storage complete: {} conversations, {} issues, {} pronunciation issues",
-                                    result.conversations_stored,
-                                    result.issues_stored,
-                                    result.pronunciation_issues_stored
-                                );
+                                log::info!("Storage complete, {} issues", result.issues_stored,);
 
                                 send_result(&mut node, &metadata, &result)?;
                             }
@@ -292,24 +234,30 @@ async fn main() -> Result<()> {
 }
 
 /// 保存对话记录到 conversations 表
-async fn save_conversation(
+async fn save_comprehensive(
     pool: &SqlitePool,
     session_id: &str,
-    speaker: &str,
-    text: &str,
+    comprehensive: &ComprehensiveResponse,
 ) -> Result<i64> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
 
-    // Determine use_lang based on speaker (user typically uses en, teacher can use both)
-    let use_lang = if speaker == "user" { "en" } else { "zh" };
-    
-    // For now, store text in both fields (can be enhanced to detect language)
-    let (content_en, content_zh) = if speaker == "user" {
-        (text.to_string(), String::new())
-    } else {
-        (text.to_string(), String::new())
-    };
+    // Update the last user message with comprehensive data
+    sqlx::query(
+        r#"
+        INSERT INTO conversations (session_id, speaker, use_lang, content_en, content_zh, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        "#,
+    )
+   .bind(session_id)
+    .bind("user")
+    .bind(comprehensive.use_lang.as_str())
+    .bind(&comprehensive.original_en)
+    .bind(&comprehensive.original_zh)
+    .bind(now)
+    .execute(pool)
+    .await?;
 
+    // Determine use_lang based on speaker (user typically uses en, teacher can use both)
     let result = sqlx::query(
         r#"
         INSERT INTO conversations (session_id, speaker, use_lang, content_en, content_zh, created_at)
@@ -317,10 +265,10 @@ async fn save_conversation(
         "#,
     )
     .bind(session_id)
-    .bind(speaker)
-    .bind(use_lang)
-    .bind(&content_en)
-    .bind(&content_zh)
+    .bind("teacher")
+    .bind("en")
+    .bind(&comprehensive.reply_en)
+    .bind(&comprehensive.reply_zh)
     .bind(now)
     .execute(pool)
     .await?;

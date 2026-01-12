@@ -19,12 +19,32 @@ use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 #[derive(Debug, Serialize, Deserialize)]
 struct ComprehensiveResponse {
     session_id: String,
-    user_text: String,
-    reply_text: String,
-    issues: Vec<serde_json::Value>,
-    pronunciation_issues: Vec<serde_json::Value>,
+    use_lang: String,       // 用户文本语言: "en" | "zh" | "mix"
+    original_en: String,    // 用户原始文本（英文）
+    original_zh: String,    // 用户原始文本（中文）
+    reply_en: String,       // AI对该消息的英文回复
+    reply_zh: String,       // AI对该消息的中文回复
+    issues: Vec<TextIssue>, // 语法/用词问题
     timestamp: i64,
 }
+
+/// 文本问题
+#[derive(Debug, Serialize, Deserialize)]
+struct TextIssue {
+    #[serde(rename = "type")]
+    issue_type: String, // grammar | word_choice | suggestion
+    original: String,
+    suggested: String,
+    description_en: String,
+    description_zh: String,
+    severity: String, // low | medium | high
+
+    #[serde(default)]
+    start_position: Option<i32>,
+    #[serde(default)]
+    end_position: Option<i32>,
+}
+
 
 /// 简单文本输入格式
 #[derive(Debug, Serialize, Deserialize)]
@@ -109,7 +129,7 @@ async fn main() -> Result<()> {
                         let text_to_convert = if let Ok(comprehensive_response) =
                             serde_json::from_slice::<ComprehensiveResponse>(&raw_data)
                         {
-                            comprehensive_response.reply_text
+                            comprehensive_response.reply_en
                         } else if let Ok(text_input) =
                             serde_json::from_slice::<TextInput>(&raw_data)
                         {

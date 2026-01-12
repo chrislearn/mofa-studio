@@ -92,7 +92,6 @@ struct ComprehensiveResponse {
     reply_en: String,       // AI对该消息的英文回复
     reply_zh: String,       // AI对该消息的中文回复
     issues: Vec<TextIssue>, // 语法/用词问题
-    pronunciation_issues: Vec<PronunciationIssue>, // 发音问题
     timestamp: i64,
 }
 
@@ -111,13 +110,6 @@ struct TextIssue {
     start_position: Option<i32>,
     #[serde(default)]
     end_position: Option<i32>,
-}
-
-/// 发音问题
-#[derive(Debug, Serialize, Deserialize)]
-struct PronunciationIssue {
-    word: String,
-    confidence: f32,
 }
 
 #[tokio::main]
@@ -235,17 +227,17 @@ async fn main() -> Result<()> {
                 .await;
                 match response {
                     Ok(response) => {
-                        log::info!("AI reply: {}", response.reply_text);
+                        log::info!("AI reply (en): {}", response.reply_en);
+                        log::info!("AI reply (zh): {}", response.reply_zh);
                         log::info!(
-                            "Found issues: {:#?}, {} pronunciation issues",
+                            "Found issues: {:#?}",
                             response.issues,
-                            response.pronunciation_issues.len()
                         );
 
                         // 添加 AI 回复到历史
                         {
                             let mut hist = history.lock().unwrap();
-                            hist.add_assistant_message(&response.reply_text);
+                            hist.add_assistant_message(&response.reply_en);
                         }
 
                         println!("====================techer 2");
@@ -422,7 +414,7 @@ async fn generate_comprehensive_response(
                 }
             }
         },
-        "required": ["reply_text", "issues"],
+        "required": ["use_lang", "original_en", "original_zh", "reply_en", "reply_zh", "issues"],
         "additionalProperties": false
     });
 
@@ -471,34 +463,42 @@ async fn generate_comprehensive_response(
     // Parse structured JSON response
     let structured: serde_json::Value = serde_json::from_str(content)?;
 
-    let reply_text = structured["reply_text"]
+    let use_lang = structured["use_lang"]
         .as_str()
-        .ok_or_else(|| eyre::eyre!("Missing reply in structured response"))?
+        .ok_or_else(|| eyre::eyre!("Missing use_lang in structured response"))?
+        .to_string();
+
+    let original_en = structured["original_en"]
+        .as_str()
+        .ok_or_else(|| eyre::eyre!("Missing original_en in structured response"))?
+        .to_string();
+
+    let original_zh = structured["original_zh"]
+        .as_str()
+        .ok_or_else(|| eyre::eyre!("Missing original_zh in structured response"))?
+        .to_string();
+
+    let reply_en = structured["reply_en"]
+        .as_str()
+        .ok_or_else(|| eyre::eyre!("Missing reply_en in structured response"))?
+        .to_string();
+
+    let reply_zh = structured["reply_zh"]
+        .as_str()
+        .ok_or_else(|| eyre::eyre!("Missing reply_zh in structured response"))?
         .to_string();
 
     let issues: Vec<TextIssue> =
         serde_json::from_value(structured["issues"].clone()).unwrap_or_default();
 
-    // Collect pronunciation issues from ASR word timings
-    let pronunciation_issues = if let Some(word_timings) = words {
-        word_timings
-            .iter()
-            .filter(|w| w.confidence < 0.7)
-            .map(|w| PronunciationIssue {
-                word: w.word.clone(),
-                confidence: w.confidence,
-            })
-            .collect()
-    } else {
-        Vec::new()
-    };
-
     Ok(ComprehensiveResponse {
         session_id: session_id.to_string(),
-        user_text: user_text.to_string(),
-        reply_text,
+        use_lang,
+        original_en,
+        original_zh,
+        reply_en,
+        reply_zh,
         issues,
-        pronunciation_issues,
         timestamp: chrono::Utc::now().timestamp(),
     })
 }
