@@ -37,7 +37,9 @@ CREATE TABLE IF NOT EXISTS conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id TEXT NOT NULL, -- UUID for grouping related conversations
     speaker TEXT NOT NULL CHECK(speaker IN ('user', 'teacher')),
-    content_text TEXT NOT NULL,
+    use_lang TEXT NOT NULL CHECK(use_lang IN ('en', 'zh')),
+    content_en TEXT NOT NULL,
+    content_zh TEXT NOT NULL,
     audio_path TEXT, -- Path to audio file if available
     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     duration_ms INTEGER, -- Audio duration in milliseconds
@@ -81,23 +83,6 @@ ON conversation_annotations(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_annotations_type 
 ON conversation_annotations(annotation_type);
 
--- Table: learning_sessions
--- Tracks learning sessions and topics
-CREATE TABLE IF NOT EXISTS learning_sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL UNIQUE, -- UUID
-    topic TEXT NOT NULL,
-    target_words TEXT, -- JSON array of words to practice
-    started_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-    ended_at INTEGER,
-    total_exchanges INTEGER DEFAULT 0,
-    user_satisfaction INTEGER CHECK(user_satisfaction BETWEEN 1 AND 5),
-    notes TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_sessions_started 
-ON learning_sessions(started_at);
-
 -- Table: word_practice_log
 -- Logs each time a word is practiced
 CREATE TABLE IF NOT EXISTS word_practice_log (
@@ -107,7 +92,7 @@ CREATE TABLE IF NOT EXISTS word_practice_log (
     practiced_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     success_level INTEGER CHECK(success_level BETWEEN 1 AND 5),
     notes TEXT,
-    
+
     FOREIGN KEY (word_id) REFERENCES issue_words(id) ON DELETE CASCADE,
     FOREIGN KEY (session_id) REFERENCES learning_sessions(session_id) ON DELETE CASCADE
 );

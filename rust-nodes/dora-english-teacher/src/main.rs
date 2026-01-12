@@ -86,9 +86,12 @@ impl ConversationHistory {
 #[derive(Debug, Serialize, Deserialize)]
 struct ComprehensiveResponse {
     session_id: String,
-    user_text: String,                             // 用户最后一条消息
-    reply_text: String,                            // AI对该消息的回复
-    issues: Vec<TextIssue>,                        // 语法/用词问题
+    use_lang: String,       // 用户文本语言: "en" | "zh" | "mix"
+    original_en: String,    // 用户原始文本（英文）
+    original_zh: String,    // 用户原始文本（中文）
+    reply_en: String,       // AI对该消息的英文回复
+    reply_zh: String,       // AI对该消息的中文回复
+    issues: Vec<TextIssue>, // 语法/用词问题
     pronunciation_issues: Vec<PronunciationIssue>, // 发音问题
     timestamp: i64,
 }
@@ -353,9 +356,25 @@ async fn generate_comprehensive_response(
     let response_schema = json!({
         "type": "object",
         "properties": {
-            "reply_text": {
+            "use_lang": {
+                "type": "string",
+                "description": "The language of the original text, either 'en' for English, 'zh' for Chinese, or 'mix' for mixed. ONLY contains issues if this value is 'en'."
+            },
+            "original_en": {
+                "type": "string",
+                "description": "The original user text in English. If the user wrote in Chinese or mixed language, translate it to English here."
+            },
+            "original_zh": {
+                "type": "string",
+                "description": "The original user text in Chinese. If the user wrote in English or mixed language, translate it to Chinese here."
+            },
+            "reply_en": {
                 "type": "string",
                 "description": "Your natural conversational response to the user in English. Keep it concise and encouraging."
+            },
+            "reply_zh": {
+                "type": "string",
+                "description": "Translation of your reply_en into Chinese."
             },
             "issues": {
                 "type": "array",

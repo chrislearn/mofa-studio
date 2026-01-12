@@ -300,15 +300,27 @@ async fn save_conversation(
 ) -> Result<i64> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
 
+    // Determine use_lang based on speaker (user typically uses en, teacher can use both)
+    let use_lang = if speaker == "user" { "en" } else { "zh" };
+    
+    // For now, store text in both fields (can be enhanced to detect language)
+    let (content_en, content_zh) = if speaker == "user" {
+        (text.to_string(), String::new())
+    } else {
+        (text.to_string(), String::new())
+    };
+
     let result = sqlx::query(
         r#"
-        INSERT INTO conversations (session_id, speaker, content_text, created_at)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO conversations (session_id, speaker, use_lang, content_en, content_zh, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
         "#,
     )
     .bind(session_id)
     .bind(speaker)
-    .bind(text)
+    .bind(use_lang)
+    .bind(&content_en)
+    .bind(&content_zh)
     .bind(now)
     .execute(pool)
     .await?;

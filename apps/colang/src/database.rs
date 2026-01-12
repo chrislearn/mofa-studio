@@ -60,7 +60,9 @@ pub struct Conversation {
     pub id: Option<i64>,
     pub session_id: String,
     pub speaker: Speaker,
-    pub content_text: String,
+    pub use_lang: UseLang,
+    pub content_en: String,
+    pub content_zh: String,
     pub audio_path: Option<String>,
     pub created_at: i64,
     pub duration_ms: Option<i64>,
@@ -73,14 +75,14 @@ pub struct Conversation {
 #[serde(rename_all = "lowercase")]
 pub enum Speaker {
     User,
-    Ai,
+    Teacher,
 }
 
 impl ToString for Speaker {
     fn to_string(&self) -> String {
         match self {
             Speaker::User => "user".to_string(),
-            Speaker::Ai => "ai".to_string(),
+            Speaker::Teacher => "teacher".to_string(),
         }
     }
 }
@@ -91,8 +93,39 @@ impl std::str::FromStr for Speaker {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "user" => Ok(Speaker::User),
-            "ai" => Ok(Speaker::Ai),
+            "teacher" => Ok(Speaker::Teacher),
             _ => Err(format!("Invalid speaker: {}", s)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum UseLang {
+    En,
+    Zh,
+    Mix,
+}
+
+impl ToString for UseLang {
+    fn to_string(&self) -> String {
+        match self {
+            UseLang::En => "en".to_string(),
+            UseLang::Zh => "zh".to_string(),
+            UseLang::Mix => "mix".to_string(),
+        }
+    }
+}
+
+impl std::str::FromStr for UseLang {
+    type Err = String;
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "en" => Ok(UseLang::En),
+            "zh" => Ok(UseLang::Zh),
+            "mix" => Ok(UseLang::Mix),
+            _ => Err(format!("Invalid use_lang: {}", s)),
         }
     }
 }
@@ -390,14 +423,16 @@ impl Database {
         let result = sqlx::query(
             r#"
             INSERT INTO conversations (
-                session_id, speaker, content_text, audio_path, created_at,
+                session_id, speaker, use_lang, content_en, content_zh, audio_path, created_at,
                 duration_ms, words_per_minute, pause_count, hesitation_count
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#
         )
         .bind(&conv.session_id)
         .bind(conv.speaker.to_string())
-        .bind(&conv.content_text)
+        .bind(conv.use_lang.to_string())
+        .bind(&conv.content_en)
+        .bind(&conv.content_zh)
         .bind(&conv.audio_path)
         .bind(conv.created_at)
         .bind(conv.duration_ms)
@@ -435,7 +470,9 @@ impl Database {
                 id: row.get("id"),
                 session_id: row.get("session_id"),
                 speaker: row.get::<String, _>("speaker").parse().unwrap(),
-                content_text: row.get("content_text"),
+                use_lang: row.get::<String, _>("use_lang").parse().unwrap(),
+                content_en: row.get("content_en"),
+                content_zh: row.get("content_zh"),
                 audio_path: row.get("audio_path"),
                 created_at: row.get("created_at"),
                 duration_ms: row.get("duration_ms"),
