@@ -69,3 +69,12 @@ create_at 创建时间戳, 后面根据这个时间戳, 决定合适抽取给用
 
 
 - bridge mic input to dora looks not work
+
+
+
+根据要求优化 colang 的界面. 你需要用到 skills.
+
+更新 ParticipantPanel 的实现, 你需要在 它里面的 StatusIndicator 旁边再添加三个按钮,
+一个复选框按钮, 代表是否显示中文.
+-个复选框按钮代表是否显示英文.
+一个 reply 最后一次语音的按钮.
