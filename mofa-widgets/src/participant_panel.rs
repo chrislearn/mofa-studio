@@ -320,34 +320,36 @@ live_design! {
             // Checkbox for showing Chinese
             show_chinese = <CheckBox> {
                 width: Fit, height: Fit
-                label: "中文"
-                draw_check: {
-                    instance dark_mode: 0.0
+                text: "中文"
+                padding: { top: 2, bottom: 2, left: 2, right: 2 }
+                label_walk: { 
+                    margin: { left: 6 }
+                    width: Fit
+                    height: Fit
                 }
-                label_walk: { margin: { left: 4 } }
+                draw_bg: {
+                    size: 12.0
+                }
                 draw_text: {
-                    instance dark_mode: 0.0
                     text_style: { font_size: 10.0 }
-                    fn get_color(self) -> vec4 {
-                        return mix((TEXT_PRIMARY), (TEXT_PRIMARY_DARK), self.dark_mode);
-                    }
                 }
             }
 
             // Checkbox for showing English
             show_english = <CheckBox> {
                 width: Fit, height: Fit
-                label: "EN"
-                draw_check: {
-                    instance dark_mode: 0.0
+                text: "EN"
+                padding: { top: 2, bottom: 2, left: 2, right: 2 }
+                label_walk: { 
+                    margin: { left: 6 }
+                    width: Fit
+                    height: Fit
                 }
-                label_walk: { margin: { left: 4 } }
+                draw_bg: {
+                    size: 12.0
+                }
                 draw_text: {
-                    instance dark_mode: 0.0
                     text_style: { font_size: 10.0 }
-                    fn get_color(self) -> vec4 {
-                        return mix((TEXT_PRIMARY), (TEXT_PRIMARY_DARK), self.dark_mode);
-                    }
                 }
             }
 
@@ -405,18 +407,6 @@ impl ParticipantPanelRef {
 
             // Name label
             inner.view.label(ids!(header.name_label)).apply_over(cx, live!{
-                draw_text: { dark_mode: (dark_mode) }
-            });
-
-            // Show Chinese checkbox
-            inner.view.check_box(ids!(header.show_chinese)).apply_over(cx, live!{
-                draw_check: { dark_mode: (dark_mode) }
-                draw_text: { dark_mode: (dark_mode) }
-            });
-
-            // Show English checkbox
-            inner.view.check_box(ids!(header.show_english)).apply_over(cx, live!{
-                draw_check: { dark_mode: (dark_mode) }
                 draw_text: { dark_mode: (dark_mode) }
             });
 
