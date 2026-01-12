@@ -295,7 +295,7 @@ live_design! {
         flow: Down
         spacing: 4
 
-        // Top row: indicator + name
+        // Top row: indicator + name + control buttons
         header = <View> {
             width: Fill, height: Fit
             flow: Right
@@ -311,6 +311,63 @@ live_design! {
                     text_style: { font_size: 11.0 }
                     fn get_color(self) -> vec4 {
                         return mix((TEXT_PRIMARY), (TEXT_PRIMARY_DARK), self.dark_mode);
+                    }
+                }
+            }
+
+            <View> { width: Fill, height: 1 }
+
+            // Checkbox for showing Chinese
+            show_chinese = <CheckBox> {
+                width: Fit, height: Fit
+                label: "中文"
+                draw_check: {
+                    instance dark_mode: 0.0
+                }
+                label_walk: { margin: { left: 4 } }
+                draw_text: {
+                    instance dark_mode: 0.0
+                    text_style: { font_size: 10.0 }
+                    fn get_color(self) -> vec4 {
+                        return mix((TEXT_PRIMARY), (TEXT_PRIMARY_DARK), self.dark_mode);
+                    }
+                }
+            }
+
+            // Checkbox for showing English
+            show_english = <CheckBox> {
+                width: Fit, height: Fit
+                label: "EN"
+                draw_check: {
+                    instance dark_mode: 0.0
+                }
+                label_walk: { margin: { left: 4 } }
+                draw_text: {
+                    instance dark_mode: 0.0
+                    text_style: { font_size: 10.0 }
+                    fn get_color(self) -> vec4 {
+                        return mix((TEXT_PRIMARY), (TEXT_PRIMARY_DARK), self.dark_mode);
+                    }
+                }
+            }
+
+            // Button to replay last voice
+            replay_btn = <Button> {
+                width: Fit, height: Fit
+                padding: { top: 4, bottom: 4, left: 8, right: 8 }
+                text: "🔁"
+                draw_text: {
+                    instance dark_mode: 0.0
+                    text_style: { font_size: 12.0 }
+                    fn get_color(self) -> vec4 {
+                        return mix((TEXT_PRIMARY), (TEXT_PRIMARY_DARK), self.dark_mode);
+                    }
+                }
+                draw_bg: {
+                    instance dark_mode: 0.0
+                    border_radius: 3.0
+                    fn get_color(self) -> vec4 {
+                        return mix(vec4(0.9, 0.9, 0.9, 1.0), vec4(0.3, 0.3, 0.35, 1.0), self.dark_mode);
                     }
                 }
             }
@@ -348,6 +405,24 @@ impl ParticipantPanelRef {
 
             // Name label
             inner.view.label(ids!(header.name_label)).apply_over(cx, live!{
+                draw_text: { dark_mode: (dark_mode) }
+            });
+
+            // Show Chinese checkbox
+            inner.view.check_box(ids!(header.show_chinese)).apply_over(cx, live!{
+                draw_check: { dark_mode: (dark_mode) }
+                draw_text: { dark_mode: (dark_mode) }
+            });
+
+            // Show English checkbox
+            inner.view.check_box(ids!(header.show_english)).apply_over(cx, live!{
+                draw_check: { dark_mode: (dark_mode) }
+                draw_text: { dark_mode: (dark_mode) }
+            });
+
+            // Replay button
+            inner.view.button(ids!(header.replay_btn)).apply_over(cx, live!{
+                draw_bg: { dark_mode: (dark_mode) }
                 draw_text: { dark_mode: (dark_mode) }
             });
 
