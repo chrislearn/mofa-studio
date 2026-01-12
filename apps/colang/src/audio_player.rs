@@ -344,7 +344,7 @@ fn run_audio_thread(
     );
 
     // Get device's default configuration and adapt it
-    let mut supported_config = device
+    let supported_config = device
         .default_output_config()
         .map_err(|e| format!("Failed to get default config: {}", e))?;
     

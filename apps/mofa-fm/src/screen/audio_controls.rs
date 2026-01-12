@@ -125,7 +125,7 @@ impl MoFaFMScreen {
         for (i, led_id) in led_ids.iter().enumerate() {
             let is_active = (i + 1) as u32 <= active_leds;
             let color = if is_active { led_colors[i] } else { off };
-            self.view.view(led_id.clone()).apply_over(cx, live! {
+            self.view.view(*led_id).apply_over(cx, live! {
                 draw_bg: { color: (color) }
             });
         }
