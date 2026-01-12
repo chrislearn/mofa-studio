@@ -229,10 +229,7 @@ async fn main() -> Result<()> {
                     Ok(response) => {
                         log::info!("AI reply (en): {}", response.reply_en);
                         log::info!("AI reply (zh): {}", response.reply_zh);
-                        log::info!(
-                            "Found issues: {:#?}",
-                            response.issues,
-                        );
+                        log::info!("Found issues: {:#?}", response.issues,);
 
                         // 添加 AI 回复到历史
                         {
@@ -309,6 +306,7 @@ Guidelines:
 5. Encourage the user and provide positive feedback
 6. Use current events, work scenarios, and daily life topics to make conversations engaging
 7. Adjust your language complexity based on the user's level
+8. Try to guide the conversation to follow up with your answers. For example, if a user asks you what you like, after you answer, you should ask the user what they like in return.
 
 Remember: Your goal is to help the user practice speaking naturally, not to lecture them."#;
 
